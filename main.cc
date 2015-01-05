@@ -1,5 +1,6 @@
 #include "segment.h"
 #include "dictionary.h"
+#include "corpus.h"
 #include <fstream>
 #include <tagdict.h>
 #include <stdio.h>
@@ -43,8 +44,12 @@ main(int argc, char **argv){
   }
 
   Dictionary dict;
-  dict.addDocument(document);
+  bow_t bow;
+  dict.doc2bow(&bow, document, true);
+  Corpus corpus;
+  corpus.addDoc(bow);
 
+  
   /*
   cout << "Get " << document.getTokens().size() << " Tokens" << endl;
   for (vector<Token>::const_iterator iter = document.getTokens().begin();
@@ -55,5 +60,14 @@ main(int argc, char **argv){
     }
   */
 
+  size_t i, j;
+  for (i = 0; i < corpus.size(); i++) {
+    const bow_t& b = corpus[i];
+    
+    for (j = 0; j < b.size(); j++) {
+      const bow_unit_t &u =  b[j];
+      cout << "[" << dict[u.id] << " : " << u.weight << "]" << endl;
+    }
+  }
   return 0;
 }

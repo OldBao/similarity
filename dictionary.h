@@ -7,6 +7,14 @@
 #include "document.h"
 
 namespace sm {
+  typedef struct bow_unit_s bow_unit_t;
+  typedef std::vector<bow_unit_t> bow_t;
+
+  struct bow_unit_s {
+    int id;
+    double weight;
+  };
+
 
   class Dictionary {
   public:
@@ -15,7 +23,7 @@ namespace sm {
     int addDocuments(const std::vector <Document> &documents);
     int addDocument(const Document &documents);
 
-    int doc2bow(std::vector<std::pair<int, int> >* bow, 
+    int doc2bow(bow_t* bow, 
                 const Document &document, 
                 bool update = false);
 
@@ -29,13 +37,15 @@ namespace sm {
 
     int save();
 
+    std::string& operator [](size_t id);
+
   private:
     void updateDesc();
     std::string _desc;
     int _nDocs, _nPos, _nnz;
     std::vector<std::string> _words;
     std::map <std::string, int> _wordmap;
-    std::map <int, int> _dfs;
+    std::vector<int> _dfs;
     uint64_t _mask;
   };
 };

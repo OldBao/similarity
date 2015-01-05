@@ -38,7 +38,7 @@ Dictionary::addDocuments(const vector<Document> &documents){
 
 
 int
-Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bool update) {
+Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
   int id = -1;
   map <int, int> frequencies;
   int new_pos;
@@ -59,12 +59,33 @@ Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bo
           _wordmap[iter->content] = id;
         }
       }
+
       new_pos++;
-  
-      if (frequencies.find (id) != frequencies.end()) {
-        frequencies[id]++;
-      } else {
-        frequencies[id] = 1;
+
+      if (id != -1) {
+        if (frequencies.find (id) != frequencies.end()) {
+          frequencies[id]++;
+        } else {
+          frequencies[id] = 1;
+        }
+      }
+    }
+
+
+  /// update document frequence stat and bow
+  for (map<int, int>::iterator iter = frequencies.begin();
+       iter != frequencies.end();
+       iter++)
+    {
+      if (update) {
+        _dfs[iter->first]++;
+      }
+
+      if (bow) {
+        bow_unit_t unit;
+        unit.id = iter->first;
+        unit.weight = iter->second;
+        bow->push_back(unit);
       }
     }
 
@@ -72,19 +93,9 @@ Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bo
     _nDocs++;
     _nPos += new_pos;
     _nnz += frequencies.size();
-    for (map<int, int>::iterator iter = frequencies.begin();
-         iter != frequencies.end();
-         iter++)
-      {
-        if (_dfs.find(iter->first) != _dfs.end()){
-          _dfs[iter->first]++;
-        } else {
-          _dfs[iter->first] = 1;
-        }
-      }
     
     updateDesc();
-    SM_LOG_DEBUG ("ADD [%d] new tokens to dict, current [%s]", frequencies.size(),
+    SM_LOG_DEBUG ("ADD [%zu] new tokens to dict, current [%s]", frequencies.size(),
                   toString().c_str());
   }
 
@@ -95,6 +106,14 @@ Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bo
 void
 Dictionary::updateDesc(){
   char buffer[4096];
-  snprintf (buffer, 4096, "Dictionary (%d unique tokens)", _words.size());
+  snprintf (buffer, 4096, "Dictionary (%zu unique tokens)", _words.size());
   _desc.assign(buffer);
+}
+
+
+std::string & 
+Dictionary::operator [](size_t id) {
+  //assert (id <= _words.size() && id > 0);
+
+  return _words[id];
 }

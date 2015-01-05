@@ -8,13 +8,9 @@ CXXFLAGS=-g \
   -pipe \
   -W \
   -Wall \
-  -fPIC
-CFLAGS=-g \
-  -O0 \
-  -pipe \
-  -W \
-  -Wall \
-  -fPIC
+  -fPIC \
+  -DDEBUG
+CFLAGS=
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
   -DVERSION=\"1.0.0.0\"
@@ -65,7 +61,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=16c4ec00fc489dcef67eb0293e871941  COMAKE
+COMAKE_MD5=f78bb0b72e214aad16cea2ac772ae8c3  COMAKE
 
 
 .PHONY:all
@@ -98,6 +94,7 @@ clean:ccpclean
 	rm -rf ./output/include/token.h
 	rm -rf ./output/include/segment.h
 	rm -rf ./output/include/encoding.h
+	rm -rf ./output/include/corpus.h
 	$(MAKE) -C test clean
 	rm -rf train_lock.o
 	rm -rf train_main.o
@@ -106,6 +103,7 @@ clean:ccpclean
 	rm -rf train_token.o
 	rm -rf train_document.o
 	rm -rf train_encoding.o
+	rm -rf train_corpus.o
 	rm -rf similarity_lock.o
 	rm -rf similarity_main.o
 	rm -rf similarity_dictionary.o
@@ -113,6 +111,7 @@ clean:ccpclean
 	rm -rf similarity_token.o
 	rm -rf similarity_document.o
 	rm -rf similarity_encoding.o
+	rm -rf similarity_corpus.o
 
 .PHONY:dist
 dist:
@@ -137,7 +136,8 @@ train:train_lock.o \
   train_segment.o \
   train_token.o \
   train_document.o \
-  train_encoding.o
+  train_encoding.o \
+  train_corpus.o
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain[0m']"
 	$(CXX) train_lock.o \
   train_main.o \
@@ -145,7 +145,8 @@ train:train_lock.o \
   train_segment.o \
   train_token.o \
   train_document.o \
-  train_encoding.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  train_encoding.o \
+  train_corpus.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
   ../../../../../../lib2-64/dict/lib/libuldict.a \
   ../../../../../../lib2-64/libcrf/lib/libcrf.a \
   ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
@@ -165,11 +166,13 @@ libsimilarity.a:similarity_lock.o \
   similarity_token.o \
   similarity_document.o \
   similarity_encoding.o \
+  similarity_corpus.o \
   dictionary.h \
   document.h \
   token.h \
   segment.h \
-  encoding.h
+  encoding.h \
+  corpus.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_lock.o \
   similarity_main.o \
@@ -177,11 +180,12 @@ libsimilarity.a:similarity_lock.o \
   similarity_segment.o \
   similarity_token.o \
   similarity_document.o \
-  similarity_encoding.o
+  similarity_encoding.o \
+  similarity_corpus.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
-	cp -f --link dictionary.h document.h token.h segment.h encoding.h ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h ./output/include
 
 .PHONY:test
 test:
@@ -201,7 +205,8 @@ train_main.o:main.cc \
   singleton.h \
   lock.h \
   dictionary.h \
-  document.h
+  document.h \
+  corpus.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
 
@@ -239,9 +244,18 @@ train_document.o:document.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_document.o document.cc
 
 train_encoding.o:encoding.cc \
-  encoding.h
+  encoding.h \
+  log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_encoding.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_encoding.o encoding.cc
+
+train_corpus.o:corpus.cc \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_corpus.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_corpus.o corpus.cc
 
 similarity_lock.o:lock.cc \
   lock.h
@@ -254,7 +268,8 @@ similarity_main.o:main.cc \
   singleton.h \
   lock.h \
   dictionary.h \
-  document.h
+  document.h \
+  corpus.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_main.o main.cc
 
@@ -292,9 +307,18 @@ similarity_document.o:document.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_document.o document.cc
 
 similarity_encoding.o:encoding.cc \
-  encoding.h
+  encoding.h \
+  log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_encoding.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_encoding.o encoding.cc
+
+similarity_corpus.o:corpus.cc \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_corpus.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_corpus.o corpus.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 
