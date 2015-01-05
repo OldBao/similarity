@@ -1,0 +1,47 @@
+#edit-mode: -*- python -*-
+#coding:gbk
+
+WORKROOT('../../../../../../')
+
+CopyUsingHardLink(True)
+
+#ENABLE_MULTI_LIBS(True)
+
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\"')
+
+CFLAGS('-g -pipe -W -Wall -fPIC')
+
+CXXFLAGS('-g -pipe -W -Wall -fPIC')
+
+IDLFLAGS('--compack')
+
+UBRPCFLAGS('--compack')
+
+INCPATHS('. ./include ./output ./output/include')
+
+#LIBS('./libsimilarity.a')
+
+LDFLAGS('-lpthread -lcrypto -lrt')
+
+CONFIGS('lib2-64/ullib@base')
+CONFIGS('lib2-64/wordseg@wordseg_3-2-1-1_PD_BL')
+CONFIGS('lib2-64/dict@dict_3-1-17-0_PD_BL')
+CONFIGS('lib2-64/libcrf@libcrf_2-1-3-0_PD_BL')
+CONFIGS('lib2-64/others-ex@others-ex_3-1-14-2_PD_BL')
+CONFIGS('lib2-64/ccode@ccode_3-5-18-1_PD_BL')
+CONFIGS('lib2-64/postag@postag_1-3-6-0_PD_BL')
+
+CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
+#CONFIGS('lib2-64/')
+#CONFIGS('lib2-64/')
+#CONFIGS('lib2-64/')
+
+
+user_sources='lock.cc main.cc dictionary.cc segment.cc token.cc document.cc encoding.cc'
+user_headers='dictionary.h document.h token.h segment.h encoding.h'
+
+Application('train',Sources(user_sources))
+#StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
+#SharedLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
+#Directory('demo')
+
