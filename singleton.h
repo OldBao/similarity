@@ -3,7 +3,7 @@
 
 #include "lock.h"
 
-#define SM_DECLARE_SINGLETON(clz)                 \
+#define SM_DECLARE_SINGLETON(clz, para)           \
   private:                                        \
  virtual ~clz();                                  \
  clz();                                           \

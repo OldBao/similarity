@@ -4,18 +4,20 @@ ifeq ($(shell uname -m),x86_64)
 CC=gcc
 CXX=g++
 CXXFLAGS=-g \
+  -O0 \
   -pipe \
   -W \
   -Wall \
   -fPIC
 CFLAGS=-g \
+  -O0 \
   -pipe \
   -W \
   -Wall \
   -fPIC
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
-  -DVERSION=\"1.9.8.7\"
+  -DVERSION=\"1.0.0.0\"
 INCPATH=-I. \
   -I./include \
   -I./output \
@@ -63,11 +65,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=bdf2a0b66042d7998cf5ff083534723a  COMAKE
+COMAKE_MD5=16c4ec00fc489dcef67eb0293e871941  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check train 
+all:comake2_makefile_check train libsimilarity.a test 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -89,6 +91,14 @@ clean:ccpclean
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mclean[0m']"
 	rm -rf train
 	rm -rf ./output/bin/train
+	rm -rf libsimilarity.a
+	rm -rf ./output/lib/libsimilarity.a
+	rm -rf ./output/include/dictionary.h
+	rm -rf ./output/include/document.h
+	rm -rf ./output/include/token.h
+	rm -rf ./output/include/segment.h
+	rm -rf ./output/include/encoding.h
+	$(MAKE) -C test clean
 	rm -rf train_lock.o
 	rm -rf train_main.o
 	rm -rf train_dictionary.o
@@ -96,6 +106,13 @@ clean:ccpclean
 	rm -rf train_token.o
 	rm -rf train_document.o
 	rm -rf train_encoding.o
+	rm -rf similarity_lock.o
+	rm -rf similarity_main.o
+	rm -rf similarity_dictionary.o
+	rm -rf similarity_segment.o
+	rm -rf similarity_token.o
+	rm -rf similarity_document.o
+	rm -rf similarity_encoding.o
 
 .PHONY:dist
 dist:
@@ -141,6 +158,38 @@ train:train_lock.o \
 	mkdir -p ./output/bin
 	cp -f --link train ./output/bin
 
+libsimilarity.a:similarity_lock.o \
+  similarity_main.o \
+  similarity_dictionary.o \
+  similarity_segment.o \
+  similarity_token.o \
+  similarity_document.o \
+  similarity_encoding.o \
+  dictionary.h \
+  document.h \
+  token.h \
+  segment.h \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
+	ar crs libsimilarity.a similarity_lock.o \
+  similarity_main.o \
+  similarity_dictionary.o \
+  similarity_segment.o \
+  similarity_token.o \
+  similarity_document.o \
+  similarity_encoding.o
+	mkdir -p ./output/lib
+	cp -f --link libsimilarity.a ./output/lib
+	mkdir -p ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h ./output/include
+
+.PHONY:test
+test:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest[0m']"
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Entering directory:'[1;32;40mtest[0m']"
+	$(MAKE) -C test
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Leaving directory:'[1;32;40mtest[0m']"
+
 train_lock.o:lock.cc \
   lock.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_lock.o[0m']"
@@ -157,6 +206,7 @@ train_main.o:main.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
 
 train_dictionary.o:dictionary.cc \
+  log.h \
   dictionary.h \
   document.h \
   token.h
@@ -173,7 +223,8 @@ train_segment.o:segment.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_segment.o segment.cc
 
 train_token.o:token.cc \
-  token.h
+  token.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_token.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_token.o token.cc
 
@@ -182,7 +233,8 @@ train_document.o:document.cc \
   token.h \
   singleton.h \
   lock.h \
-  document.h
+  document.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_document.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_document.o document.cc
 
@@ -190,6 +242,59 @@ train_encoding.o:encoding.cc \
   encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_encoding.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_encoding.o encoding.cc
+
+similarity_lock.o:lock.cc \
+  lock.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lock.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lock.o lock.cc
+
+similarity_main.o:main.cc \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h \
+  dictionary.h \
+  document.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_main.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_main.o main.cc
+
+similarity_dictionary.o:dictionary.cc \
+  log.h \
+  dictionary.h \
+  document.h \
+  token.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_dictionary.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_dictionary.o dictionary.cc
+
+similarity_segment.o:segment.cc \
+  log.h \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_segment.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_segment.o segment.cc
+
+similarity_token.o:token.cc \
+  token.h \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_token.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_token.o token.cc
+
+similarity_document.o:document.cc \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h \
+  document.h \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_document.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_document.o document.cc
+
+similarity_encoding.o:encoding.cc \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_encoding.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_encoding.o encoding.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 

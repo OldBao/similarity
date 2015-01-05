@@ -1,3 +1,4 @@
+#include "log.h"
 #include "dictionary.h"
 
 using namespace sm;
@@ -12,6 +13,12 @@ Dictionary::Dictionary () :
 Dictionary::~Dictionary(){
 
 }
+
+int
+Dictionary::addDocument(const Document &document) {
+  return doc2bow(NULL, document, true);
+}
+
 
 int
 Dictionary::addDocuments(const vector<Document> &documents){
@@ -34,11 +41,15 @@ int
 Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bool update) {
   int id = -1;
   map <int, int> frequencies;
+  int new_pos;
 
   for (vector <Token>::const_iterator iter = document.getTokens().begin();
        iter != document.getTokens().end();
        iter++)
     {
+      if (iter->length() == 1) {
+        continue;
+      }
       if (_wordmap.find(iter->content) != _wordmap.end()) {
         id = _wordmap[iter->content];
       } else {
@@ -47,7 +58,8 @@ Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bo
           _words.push_back (iter->content);
           _wordmap[iter->content] = id;
         }
-      }    
+      }
+      new_pos++;
   
       if (frequencies.find (id) != frequencies.end()) {
         frequencies[id]++;
@@ -58,7 +70,7 @@ Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bo
 
   if (update) {
     _nDocs++;
-    _nPos += document.getTokens().size();
+    _nPos += new_pos;
     _nnz += frequencies.size();
     for (map<int, int>::iterator iter = frequencies.begin();
          iter != frequencies.end();
@@ -70,7 +82,19 @@ Dictionary::doc2bow (vector <pair<int, int> > *bow, const Document& document, bo
           _dfs[iter->first] = 1;
         }
       }
+    
+    updateDesc();
+    SM_LOG_DEBUG ("ADD [%d] new tokens to dict, current [%s]", frequencies.size(),
+                  toString().c_str());
   }
 
   return 0;
+}
+
+
+void
+Dictionary::updateDesc(){
+  char buffer[4096];
+  snprintf (buffer, 4096, "Dictionary (%d unique tokens)", _words.size());
+  _desc.assign(buffer);
 }

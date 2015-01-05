@@ -34,7 +34,11 @@ Segment::~Segment(){
 }
 
 int
-Segment::segment(vector<Token> *ret_tokens, const string &line){
+Segment::segment(vector<Token> *ret_tokens, const string &line, 
+                 uint64_t mask,
+                 const std::string& encoding, 
+                 const std::string& token_encoding)
+{
   scw_out_t *out = NULL;
   int ret;
   token_t tokens [MAX_TOKENS];
@@ -61,11 +65,14 @@ Segment::segment(vector<Token> *ret_tokens, const string &line){
   tag_postag(tokens, ret);
   
   for (i = 0; i < ret; i++) {
-    Token token(tokens[i]);
-    ret_tokens->push_back(token);
+    if (SM_POS2TYPE(tokens[i].type) & mask) {
+      Token token(tokens[i], token_encoding);
+      ret_tokens->push_back(token);
+    }
   }
   
   return 0;
+
  error:
   if (out) {
     scw_destroy_out (out);

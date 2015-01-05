@@ -1,25 +1,30 @@
 #edit-mode: -*- python -*-
 #coding:gbk
 
+import sys
+
+global DEBUG
 WORKROOT('../../../../../../')
 
 CopyUsingHardLink(True)
 
-#ENABLE_MULTI_LIBS(True)
+DEBUG=False
+if len(sys.argv) == 2:
+    if sys.argv[1] == "DEBUG":
+        DEBUG = True
 
-CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\"')
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.0.0.0\\\"')
 
-CFLAGS('-g -pipe -W -Wall -fPIC')
 
-CXXFLAGS('-g -pipe -W -Wall -fPIC')
+if DEBUG:
+    CFLAGS('-g -O0 -pipe -W -Wall -fPIC')
+    CXXFLAGS('-g -O0 -pipe -W -Wall -fPIC')
+else:
+    CFLAGS('-g -O2 -pipe -W -Wall -fPIC')
+    CXXFLAGS('-g -O2 -pipe -W -Wall -fPIC')
 
-IDLFLAGS('--compack')
-
-UBRPCFLAGS('--compack')
 
 INCPATHS('. ./include ./output ./output/include')
-
-#LIBS('./libsimilarity.a')
 
 LDFLAGS('-lpthread -lcrypto -lrt')
 
@@ -32,16 +37,15 @@ CONFIGS('lib2-64/ccode@ccode_3-5-18-1_PD_BL')
 CONFIGS('lib2-64/postag@postag_1-3-6-0_PD_BL')
 
 CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
-#CONFIGS('lib2-64/')
-#CONFIGS('lib2-64/')
-#CONFIGS('lib2-64/')
+
 
 
 user_sources='lock.cc main.cc dictionary.cc segment.cc token.cc document.cc encoding.cc'
 user_headers='dictionary.h document.h token.h segment.h encoding.h'
 
 Application('train',Sources(user_sources))
-#StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
+StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 #SharedLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
-#Directory('demo')
+print SubDirectory
+SubDirectory('test')
 
