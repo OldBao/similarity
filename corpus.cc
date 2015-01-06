@@ -25,6 +25,10 @@ Corpus::setRWType (int type){
 int
 Corpus::addDoc(const bow_t &bow) {
   _docs.push_back(bow);
+  if (bow.size() > _mdl) {
+    _mdl = bow.size();
+  }
+
   updateDesc();
   return 0;
 }
@@ -36,6 +40,10 @@ Corpus::~Corpus(){
 int
 Corpus::addDocs (const vector<bow_t> &bows) {
   _docs.insert (_docs.end(), bows.begin(), bows.end());
+  for (bow_t::const_iterator iter = bows.begin(); iter != bows.end(); iter++) {
+    if (biow.size() > _mdl) _mdl = bow.size();
+  }
+
   updateDesc();
   return 0;
 }

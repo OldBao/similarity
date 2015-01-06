@@ -40,5 +40,44 @@ namespace sm {
     std::vector<double> _idf;
     int _ndoc, _nnz;
   };
+
+
+  class LDAState {
+  public:
+    LDAState (int ntopics, int nterms);
+    virtual ~LDAState();
+
+    double **class_word;
+    double  *class_total;
+    double   alpha_suffstats;
+    int nDocs;
+
+  private:
+    LDAState();
+    LDAState(LDAState &);
+  };
+
+  class LDAModel : public Model {
+  public:
+    LDAModel (Corpus *corpus, Dictionary *dict);
+    ~LDAModel ();
+    
+    int train();
+    int inference (const bow_t &src, bow_t *ret, bool normalized=false);
+    int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
+    
+    const std::vector<double> idf() {return _idf;}
+
+    virtual int save(const std::string &fname);
+    virtual int load(const std::string &fname);
+
+  private:
+    double _alpha;
+    double **log_prop_w;
+    int _ntopics, _iter;
+
+    Corpus *_corpus;
+    Dictionary *_dict;
+  };
 };
 #endif

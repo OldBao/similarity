@@ -24,6 +24,7 @@ namespace sm {
     int addDocs (const std::vector<bow_t>& bows);
     
     size_t size();
+    size_t maxDocLen() {return _mdl;}
     bow_t& operator[] (size_t index);
     bow_t& at(size_t index);
     std::vector <bow_t> & getBows() {return _docs;}
@@ -34,6 +35,7 @@ namespace sm {
     std::vector <bow_t> _docs;
     std::string _desc;
     Dictionary *_dict;
+    int _mdl;
   };
   
   class CorpusRW {

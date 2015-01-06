@@ -64,7 +64,7 @@ main(int argc, char **argv){
   while (corpus.size() <= max) {
     struct dirent *entry = readdir(dir);
 
-    if (!entry) continue;
+    if (!entry) break;
     if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) continue;
     cout << "Processing : " << entry->d_name << endl; 
 
