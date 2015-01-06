@@ -72,6 +72,9 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
     }
 
 
+  if (update)
+    _dfs.resize (_words.size());
+
   /// update document frequence stat and bow
   for (map<int, int>::iterator iter = frequencies.begin();
        iter != frequencies.end();

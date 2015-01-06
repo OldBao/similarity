@@ -25,6 +25,8 @@ namespace sm {
     
     size_t size();
     bow_t& operator[] (size_t index);
+    bow_t& at(size_t index);
+    std::vector <bow_t> & getBows() {return _docs;}
     
   protected:
     void updateDesc();

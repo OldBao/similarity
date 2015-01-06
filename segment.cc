@@ -42,6 +42,7 @@ Segment::segment(vector<Token> *ret_tokens, const string &line,
   scw_out_t *out = NULL;
   int ret;
   token_t tokens [MAX_TOKENS];
+  memset (tokens, 0, MAX_TOKENS * sizeof (token_t));
   int i;
 
   out = scw_create_out (MAX_TOKENS, scw_flags);
@@ -62,15 +63,17 @@ Segment::segment(vector<Token> *ret_tokens, const string &line,
     goto error;
   }
 
-  tag_postag(tokens, ret);
+  tag_postag(tokens, (uint32_t) ret);
   
   for (i = 0; i < ret; i++) {
     if (SM_POS2TYPE(tokens[i].type) & mask) {
       Token token(tokens[i], token_encoding);
       ret_tokens->push_back(token);
     }
+
   }
   
+  scw_destroy_out (out);
   return 0;
 
  error:

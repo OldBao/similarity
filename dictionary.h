@@ -37,6 +37,9 @@ namespace sm {
 
     int save();
 
+    int getNDoc () { return _nDocs; }
+    int getNnz () { return _nnz; }
+    std::vector<int>& getDfs() {return _dfs;}
     std::string& operator [](size_t id);
 
   private:

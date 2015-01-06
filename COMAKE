@@ -37,8 +37,8 @@ CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
 
 
 
-user_sources='lock.cc main.cc dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc'
-user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h'
+user_sources='lock.cc main.cc dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc'
+user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h'
 
 Application('train',Sources(user_sources))
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))

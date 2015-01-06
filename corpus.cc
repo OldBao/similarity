@@ -47,16 +47,21 @@ Corpus::size(){
 
 
 bow_t &
-Corpus::operator [](size_t i) {
+Corpus::at(size_t i) {
   assert (i >= 0 && i < _docs.size());
 
   return _docs[i];
 }
 
+bow_t &
+Corpus::operator [](size_t i) {
+  return at(i);
+}
+
 void
 Corpus::updateDesc(){
   char buffer[4096];
-  snprintf (buffer, 4096, "%zu docs", _docs.size());
+  snprintf (buffer, 4096, "%zu documents", _docs.size());
   _desc.assign (buffer);
 }
 

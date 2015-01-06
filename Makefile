@@ -61,7 +61,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=f78bb0b72e214aad16cea2ac772ae8c3  COMAKE
+COMAKE_MD5=faec30c0db99788ec202a941ea23f609  COMAKE
 
 
 .PHONY:all
@@ -95,6 +95,7 @@ clean:ccpclean
 	rm -rf ./output/include/segment.h
 	rm -rf ./output/include/encoding.h
 	rm -rf ./output/include/corpus.h
+	rm -rf ./output/include/model.h
 	$(MAKE) -C test clean
 	rm -rf train_lock.o
 	rm -rf train_main.o
@@ -104,6 +105,7 @@ clean:ccpclean
 	rm -rf train_document.o
 	rm -rf train_encoding.o
 	rm -rf train_corpus.o
+	rm -rf train_tfidf.o
 	rm -rf similarity_lock.o
 	rm -rf similarity_main.o
 	rm -rf similarity_dictionary.o
@@ -112,6 +114,7 @@ clean:ccpclean
 	rm -rf similarity_document.o
 	rm -rf similarity_encoding.o
 	rm -rf similarity_corpus.o
+	rm -rf similarity_tfidf.o
 
 .PHONY:dist
 dist:
@@ -137,7 +140,8 @@ train:train_lock.o \
   train_token.o \
   train_document.o \
   train_encoding.o \
-  train_corpus.o
+  train_corpus.o \
+  train_tfidf.o
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain[0m']"
 	$(CXX) train_lock.o \
   train_main.o \
@@ -146,7 +150,8 @@ train:train_lock.o \
   train_token.o \
   train_document.o \
   train_encoding.o \
-  train_corpus.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  train_corpus.o \
+  train_tfidf.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
   ../../../../../../lib2-64/dict/lib/libuldict.a \
   ../../../../../../lib2-64/libcrf/lib/libcrf.a \
   ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
@@ -167,12 +172,14 @@ libsimilarity.a:similarity_lock.o \
   similarity_document.o \
   similarity_encoding.o \
   similarity_corpus.o \
+  similarity_tfidf.o \
   dictionary.h \
   document.h \
   token.h \
   segment.h \
   encoding.h \
-  corpus.h
+  corpus.h \
+  model.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_lock.o \
   similarity_main.o \
@@ -181,11 +188,12 @@ libsimilarity.a:similarity_lock.o \
   similarity_token.o \
   similarity_document.o \
   similarity_encoding.o \
-  similarity_corpus.o
+  similarity_corpus.o \
+  similarity_tfidf.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
-	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h ./output/include
 
 .PHONY:test
 test:
@@ -206,7 +214,8 @@ train_main.o:main.cc \
   lock.h \
   dictionary.h \
   document.h \
-  corpus.h
+  corpus.h \
+  model.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
 
@@ -257,6 +266,16 @@ train_corpus.o:corpus.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_corpus.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_corpus.o corpus.cc
 
+train_tfidf.o:tfidf.cc \
+  model.h \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_tfidf.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_tfidf.o tfidf.cc
+
 similarity_lock.o:lock.cc \
   lock.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lock.o[0m']"
@@ -269,7 +288,8 @@ similarity_main.o:main.cc \
   lock.h \
   dictionary.h \
   document.h \
-  corpus.h
+  corpus.h \
+  model.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_main.o main.cc
 
@@ -319,6 +339,16 @@ similarity_corpus.o:corpus.cc \
   token.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_corpus.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_corpus.o corpus.cc
+
+similarity_tfidf.o:tfidf.cc \
+  model.h \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_tfidf.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_tfidf.o tfidf.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 
