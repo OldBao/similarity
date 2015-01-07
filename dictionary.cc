@@ -4,6 +4,15 @@
 using namespace sm;
 using namespace std;
 
+void
+bow_t::push_back(const bow_unit_t &u){
+  if (u.weight > 1e-12) {
+    _total += u.weight;
+  }
+  _v.push_back (u);
+}
+
+
 Dictionary::Dictionary () :
   _nDocs(0), _nPos(0), _nnz(0)
 {
@@ -97,7 +106,7 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
     _nPos += new_pos;
     _nnz += frequencies.size();
     
-    updateDesc();
+    _update();
     SM_LOG_DEBUG ("ADD [%zu] new tokens to dict, current [%s]", frequencies.size(),
                   toString().c_str());
   }
@@ -107,7 +116,7 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
 
 
 void
-Dictionary::updateDesc(){
+Dictionary::_update(){
   char buffer[4096];
   snprintf (buffer, 4096, "Dictionary (%zu unique tokens)", _words.size());
   _desc.assign(buffer);

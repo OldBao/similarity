@@ -8,11 +8,27 @@
 
 namespace sm {
   typedef struct bow_unit_s bow_unit_t;
-  typedef std::vector<bow_unit_t> bow_t;
+  typedef struct bow_s bow_t;
+
 
   struct bow_unit_s {
     int id;
     double weight;
+  };
+
+  class bow_s {
+  public:
+    void push_back(const bow_unit_t &u);
+    size_t size() const {return _v.size(); }
+    const bow_unit_t &operator[](size_t i) const { return _v[i]; }
+    void reserve(size_t size) { _v.reserve(size); }
+    void resize(size_t size) { _v.resize(size); }
+    void clear() { _v.clear(); }
+    double total () const{return _total;}
+
+  private:
+    std::vector<bow_unit_t> _v;
+    double _total; //total weight of unit
   };
 
 
@@ -31,7 +47,7 @@ namespace sm {
       return _desc;
     }
 
-    int length(){
+    int size(){
       return _words.size();
     }
 
@@ -43,7 +59,7 @@ namespace sm {
     std::string& operator [](size_t id);
 
   private:
-    void updateDesc();
+    void _update();
     std::string _desc;
     int _nDocs, _nPos, _nnz;
     std::vector<std::string> _words;

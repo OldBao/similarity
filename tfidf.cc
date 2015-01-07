@@ -32,10 +32,11 @@ TFIDFModel::TFIDFModel (Corpus *corpus, Dictionary *dict) :
       const bow_t &b = corpus->at(i);
       _nnz += b.size();
 
-      for (bow_t::const_iterator iter = b.begin(); iter != b.end(); iter++) {
-        if (iter->id >= _dfs.size()) _dfs.resize(iter->id+1);
+      for (size_t i = 0; i < b.size(); i++) {
+        const bow_unit_t &u = b[i];
+        if (u.id >= _dfs.size()) _dfs.resize(u.id+1);
 
-        _dfs[iter->id]++;
+        _dfs[u.id]++;
 
       }
     }
@@ -73,21 +74,18 @@ int
 TFIDFModel::inference (const bow_t &src, bow_t *dest, bool normalize) {
   dest->reserve (src.size());
 
-  for (bow_t::const_iterator iter = src.begin();
-       iter != src.end();
-       iter++)
-    {
-      bow_unit_t tmpu;
-      if (_idf[iter->id] == 0.0) {
-        continue;
-      }
+  for (size_t i = 0; i < src.size(); i++) {
+    bow_unit_t tmpu;
+    if (_idf[src[i].id] == 0.0) {
+      continue;
+    }
       
-      tmpu.id = iter->id;
-      tmpu.weight = _idf[iter->id] * iter->weight; 
-      if (tmpu.weight >= 1e-12) {
-        //precesion threshold
-        dest->push_back(tmpu);
-      }
+    tmpu.id = src[i].id;
+    tmpu.weight = _idf[src[i].id] * src[i].weight; 
+    if (tmpu.weight >= 1e-12) {
+      //precesion threshold
+      dest->push_back(tmpu);
+    }
     }
 
   if (normalize) {

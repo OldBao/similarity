@@ -61,7 +61,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=faec30c0db99788ec202a941ea23f609  COMAKE
+COMAKE_MD5=45e9eec48294193039b2d3951ad0780d  COMAKE
 
 
 .PHONY:all
@@ -106,6 +106,9 @@ clean:ccpclean
 	rm -rf train_encoding.o
 	rm -rf train_corpus.o
 	rm -rf train_tfidf.o
+	rm -rf train_lda.o
+	rm -rf train_lda_utils.o
+	rm -rf train_cokus.o
 	rm -rf similarity_lock.o
 	rm -rf similarity_main.o
 	rm -rf similarity_dictionary.o
@@ -115,6 +118,9 @@ clean:ccpclean
 	rm -rf similarity_encoding.o
 	rm -rf similarity_corpus.o
 	rm -rf similarity_tfidf.o
+	rm -rf similarity_lda.o
+	rm -rf similarity_lda_utils.o
+	rm -rf similarity_cokus.o
 
 .PHONY:dist
 dist:
@@ -141,7 +147,10 @@ train:train_lock.o \
   train_document.o \
   train_encoding.o \
   train_corpus.o \
-  train_tfidf.o
+  train_tfidf.o \
+  train_lda.o \
+  train_lda_utils.o \
+  train_cokus.o
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain[0m']"
 	$(CXX) train_lock.o \
   train_main.o \
@@ -151,7 +160,10 @@ train:train_lock.o \
   train_document.o \
   train_encoding.o \
   train_corpus.o \
-  train_tfidf.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  train_tfidf.o \
+  train_lda.o \
+  train_lda_utils.o \
+  train_cokus.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
   ../../../../../../lib2-64/dict/lib/libuldict.a \
   ../../../../../../lib2-64/libcrf/lib/libcrf.a \
   ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
@@ -173,6 +185,9 @@ libsimilarity.a:similarity_lock.o \
   similarity_encoding.o \
   similarity_corpus.o \
   similarity_tfidf.o \
+  similarity_lda.o \
+  similarity_lda_utils.o \
+  similarity_cokus.o \
   dictionary.h \
   document.h \
   token.h \
@@ -189,7 +204,10 @@ libsimilarity.a:similarity_lock.o \
   similarity_document.o \
   similarity_encoding.o \
   similarity_corpus.o \
-  similarity_tfidf.o
+  similarity_tfidf.o \
+  similarity_lda.o \
+  similarity_lda_utils.o \
+  similarity_cokus.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
@@ -276,6 +294,25 @@ train_tfidf.o:tfidf.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_tfidf.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_tfidf.o tfidf.cc
 
+train_lda.o:lda.cc \
+  model.h \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_lda.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_lda.o lda.cc
+
+train_lda_utils.o:lda_utils.cc
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_lda_utils.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_lda_utils.o lda_utils.cc
+
+train_cokus.o:cokus.cc \
+  cokus.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_cokus.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_cokus.o cokus.cc
+
 similarity_lock.o:lock.cc \
   lock.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lock.o[0m']"
@@ -349,6 +386,25 @@ similarity_tfidf.o:tfidf.cc \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_tfidf.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_tfidf.o tfidf.cc
+
+similarity_lda.o:lda.cc \
+  model.h \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lda.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lda.o lda.cc
+
+similarity_lda_utils.o:lda_utils.cc
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lda_utils.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lda_utils.o lda_utils.cc
+
+similarity_cokus.o:cokus.cc \
+  cokus.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_cokus.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_cokus.o cokus.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 

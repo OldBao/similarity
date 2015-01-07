@@ -4,6 +4,7 @@
 #include "corpus.h"
 #include "dictionary.h"
 
+#include <vector>
 namespace sm {
   class Model {
   public:
@@ -21,7 +22,13 @@ namespace sm {
     Corpus *_corpus;
   };
 
+
   class TFIDFModel : public Model{
+  private:
+    std::vector<int> _dfs; 
+    std::vector<double> _idf;
+    int _ndoc, _nnz;
+
   public:
     TFIDFModel (Corpus *corpus, Dictionary *dict);
     ~TFIDFModel();
@@ -34,25 +41,21 @@ namespace sm {
 
     virtual int save(const std::string &fname);
     virtual int load(const std::string &fname);
-    
-  private:
-    std::vector<int> _dfs; 
-    std::vector<double> _idf;
-    int _ndoc, _nnz;
   };
 
 
   class LDAState {
   public:
-    LDAState (int ntopics, int nterms);
+    LDAState (const Corpus &corpus, int topics, int num_init = 1);
     virtual ~LDAState();
 
+    void zero();
     double **class_word;
     double  *class_total;
     double   alpha_suffstats;
-    int nDocs;
-
+    int ndocs;
   private:
+    int _nterms, _ntopics;
     LDAState();
     LDAState(LDAState &);
   };
@@ -66,18 +69,27 @@ namespace sm {
     int inference (const bow_t &src, bow_t *ret, bool normalized=false);
     int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
     
-    const std::vector<double> idf() {return _idf;}
-
     virtual int save(const std::string &fname);
     virtual int load(const std::string &fname);
 
   private:
+    void _em (LDAState *ss);
+    void _mle (LDAState *s, int estimate_alpha);
+    double _e_step (const bow_t &doc, double *gamma, double **phi, LDAState *ss);
+    double _infer(const bow_t& doc, double* var_gamma, double** phi);
+    double _compute_likelihood(const bow_t& doc, double** phi, double* var_gamma);
+    double _opt_alpha(double ss, int D, int K);
     double _alpha;
-    double **log_prop_w;
-    int _ntopics, _iter;
-
-    Corpus *_corpus;
-    Dictionary *_dict;
+    double _init_alpha;
+    int _estimate_alpha;
+    int _var_max_iter;
+    double _var_converged;
+    int _em_max_iter;
+    float _em_converged;
+    int _max_alpha_iter;
+    double _newton_threshold;
+    int _ntopics;
+    double **_log_prob_w;
   };
 };
 #endif

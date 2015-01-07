@@ -23,18 +23,20 @@ namespace sm {
     int addDoc(const bow_t& bow);
     int addDocs (const std::vector<bow_t>& bows);
     
-    size_t size();
-    size_t maxDocLen() {return _mdl;}
-    bow_t& operator[] (size_t index);
-    bow_t& at(size_t index);
+    size_t size() const;
+    size_t maxDocLen() const {return _mdl;}
+    int getNTerms() const {return _nterms;}
+    const bow_t& operator[] (size_t index) const;
+    const bow_t& at(size_t index) const;
     std::vector <bow_t> & getBows() {return _docs;}
     
   protected:
-    void updateDesc();
+    void _update();
     CorpusRW *_rw;
     std::vector <bow_t> _docs;
     std::string _desc;
     Dictionary *_dict;
+    int _nterms;
     int _mdl;
   };
   
