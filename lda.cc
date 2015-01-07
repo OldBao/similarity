@@ -1,5 +1,6 @@
 #include "model.h"
 #include "log.h"
+
 using namespace std;
 using namespace sm;
 
@@ -18,7 +19,7 @@ extern uint32_t randomMT();
 
 LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
   Model(corpus, dict),
-  _alpha(0.0), 
+  _alpha(1.0), 
   _init_alpha(1.0),
   _estimate_alpha(1), //TODO 1 or 0
   _var_max_iter(20),
@@ -30,13 +31,12 @@ LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
   _ntopics(100)
 {
   assert (corpus);
-  assert (dict);
 
   _log_prob_w = (double **) malloc (sizeof (double *) * _ntopics);
   
   for (int i = 0; i < _ntopics; i++) {
-    _log_prob_w[i] = (double *) malloc (sizeof (double) * dict->size());
-    for (int j = 0; j < dict->size(); j++) {
+    _log_prob_w[i] = (double *) malloc (sizeof (double) * corpus->getNTerms());
+    for (int j = 0; j < _corpus->getNTerms(); j++) {
       _log_prob_w[i][j] = 0.0;
     } 
   }
@@ -87,7 +87,7 @@ LDAModel::_em(LDAState *ss){
   converged = 1;
   while (((converged < 0) || (converged > _em_converged) || (i <= 2)) && (i <= _em_max_iter)) {
     i++; 
-    SM_LOG_DEBUG("**** em iteration %zu ****\n", i);
+    SM_LOG_DEBUG("**** em iteration %zu ****", i);
     likelihood = 0;
     
     ss->zero ();
@@ -125,7 +125,7 @@ LDAModel::_em(LDAState *ss){
 
   for (i = 0; i < _corpus->size(); i++) free (var_gamma[i]);
   free (var_gamma);
-  for (i = 0; i < _corpus->size(); i++) free (phi[i]);
+  for (i = 0; i < max_length; i++) free (phi[i]);
   free (phi);
 
 }
@@ -190,14 +190,14 @@ LDAModel::_mle (LDAState* ss, int estimate_alpha) {
         _log_prob_w[k][w] = -100;
       }
     }
+  }
 
-    if (estimate_alpha == 1) {
-      _alpha = _opt_alpha(ss->alpha_suffstats,
-                          ss->ndocs,
-                          _ntopics);
+  if (estimate_alpha == 1) {
+    _alpha = _opt_alpha(ss->alpha_suffstats,
+                        ss->ndocs,
+                        _ntopics);
 
-      SM_LOG_DEBUG ("new alpha = %5.5f\n", _alpha);
-    }
+    SM_LOG_DEBUG ("new alpha = %5.5f", _alpha);
   }
 }
 
@@ -252,7 +252,7 @@ LDAModel::_infer(const bow_t& doc, double* var_gamma, double** phi) {
         converged = (likelihood_old - likelihood) / likelihood_old;
         likelihood_old = likelihood;
 
-        SM_LOG_TRACE ("[LDA INF] %8.5f %1.3e\n", likelihood, converged);
+        //SM_LOG_TRACE ("[LDA INF] %8.5f %1.3e", likelihood, converged);
     }
     return likelihood;
 }
@@ -270,7 +270,7 @@ LDAModel::_opt_alpha(double ss, int D, int K) {
     a = exp(log_a);
     if (isnan(a)) {
       init_a = init_a * 10;
-      SM_LOG_DEBUG ("warning : alpha is nan; new init = %5.5f\n", init_a);
+      SM_LOG_DEBUG ("warning : alpha is nan; new init = %5.5f", init_a);
       a = init_a;
       log_a = log(a);
     }
@@ -278,10 +278,10 @@ LDAModel::_opt_alpha(double ss, int D, int K) {
     df = d_alhood(a, ss, D, K);
     d2f = d2_alhood(a, D, K);
     log_a = log_a - df/(d2f * a + df);
-    SM_LOG_TRACE("alpha maximization : %5.5f   %5.5f\n", f, df);
+    SM_LOG_DEBUG ("alpha maximization : %5.5f   %5.5f", f, df);
   }
   while ((fabs(df) > _newton_threshold) && (iter < _max_alpha_iter));
-  return(exp(log_a));
+  return exp(log_a) ;
 }
 
 
@@ -322,7 +322,7 @@ LDAModel::_compute_likelihood(const bow_t& doc, double** phi, double* var_gamma)
 
 LDAState::LDAState(const Corpus &corpus, int topics, int num_init):
   ndocs(0),
-  _nterms (corpus.size()),
+  _nterms (corpus.getNTerms()),
   _ntopics(topics)
 {
   int i, j, k, d, n;
@@ -340,8 +340,9 @@ LDAState::LDAState(const Corpus &corpus, int topics, int num_init):
 
   for (k = 0; k < _ntopics; k++) {
     for (i = 0; i < num_init; i++) {
-      d = floor(myrand() * corpus.size());
-      SM_LOG_DEBUG ("initialized with document %d\n", d);
+      //d = floor(myrand() * corpus.size());
+      d = 0;
+      SM_LOG_DEBUG ("initialized with document %d", d);
       const bow_t& doc = corpus[d];
       for (n = 0; n < doc.size(); n++) {
         class_word[k][doc[n].id] += doc[n].weight;

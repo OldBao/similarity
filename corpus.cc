@@ -5,10 +5,7 @@ using namespace sm;
 
 static int getMaxIdFromBow (const bow_t & bow);
 
-Corpus::Corpus(Dictionary *dict) : _rw(NULL), _dict(dict){
-  if (dict) {
-    _nterms = dict->size();
-  }
+Corpus::Corpus(Dictionary *dict) : _rw(NULL), _dict(dict), _nterms(0), _mdl(0){
 }
 
 int
@@ -109,7 +106,7 @@ BleiCorpusRW::deserialize(const std::string &src, std::vector <bow_t> *bows ) {
 static int getMaxIdFromBow (const bow_t & bow) {
   int max = -1;
   for (size_t i = 0; i < bow.size(); i++) {
-    const bow_unit_t & u = bow[i];
+    const bow_unit_t& u = bow[i];
       if (u.id > max) max = u.id;
     }
 

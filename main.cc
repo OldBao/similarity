@@ -105,7 +105,7 @@ main(int argc, char **argv){
       }
     }*/
   }
-
+  /*
   TFIDFModel* model = new TFIDFModel(&corpus, &dict);
   model->train();
   
@@ -133,5 +133,8 @@ main(int argc, char **argv){
 
   delete model;
   closedir(dir);
+  */
+  LDAModel *model = new LDAModel(&corpus, NULL);
+  model->train();
   return 0;
 }

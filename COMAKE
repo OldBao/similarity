@@ -37,10 +37,11 @@ CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
 
 
 
-user_sources='lock.cc main.cc dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc'
+user_sources='lock.cc dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc'
 user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h'
 
-Application('train',Sources(user_sources))
+Application('train',Sources(user_sources) + Sources ("main.cc"))
+Application('train_raw',Sources(user_sources) + Sources("main_lda.cc"))
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 #SharedLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 print SubDirectory

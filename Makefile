@@ -61,11 +61,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=45e9eec48294193039b2d3951ad0780d  COMAKE
+COMAKE_MD5=89e61bd899e62fb52b3961bcade27119  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check train libsimilarity.a test 
+all:comake2_makefile_check train train_raw libsimilarity.a test 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -87,6 +87,8 @@ clean:ccpclean
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mclean[0m']"
 	rm -rf train
 	rm -rf ./output/bin/train
+	rm -rf train_raw
+	rm -rf ./output/bin/train_raw
 	rm -rf libsimilarity.a
 	rm -rf ./output/lib/libsimilarity.a
 	rm -rf ./output/include/dictionary.h
@@ -98,7 +100,6 @@ clean:ccpclean
 	rm -rf ./output/include/model.h
 	$(MAKE) -C test clean
 	rm -rf train_lock.o
-	rm -rf train_main.o
 	rm -rf train_dictionary.o
 	rm -rf train_segment.o
 	rm -rf train_token.o
@@ -109,8 +110,20 @@ clean:ccpclean
 	rm -rf train_lda.o
 	rm -rf train_lda_utils.o
 	rm -rf train_cokus.o
+	rm -rf train_main.o
+	rm -rf train_raw_lock.o
+	rm -rf train_raw_dictionary.o
+	rm -rf train_raw_segment.o
+	rm -rf train_raw_token.o
+	rm -rf train_raw_document.o
+	rm -rf train_raw_encoding.o
+	rm -rf train_raw_corpus.o
+	rm -rf train_raw_tfidf.o
+	rm -rf train_raw_lda.o
+	rm -rf train_raw_lda_utils.o
+	rm -rf train_raw_cokus.o
+	rm -rf train_raw_main_lda.o
 	rm -rf similarity_lock.o
-	rm -rf similarity_main.o
 	rm -rf similarity_dictionary.o
 	rm -rf similarity_segment.o
 	rm -rf similarity_token.o
@@ -140,7 +153,6 @@ love:
 	@echo "make love done"
 
 train:train_lock.o \
-  train_main.o \
   train_dictionary.o \
   train_segment.o \
   train_token.o \
@@ -150,10 +162,10 @@ train:train_lock.o \
   train_tfidf.o \
   train_lda.o \
   train_lda_utils.o \
-  train_cokus.o
+  train_cokus.o \
+  train_main.o
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain[0m']"
 	$(CXX) train_lock.o \
-  train_main.o \
   train_dictionary.o \
   train_segment.o \
   train_token.o \
@@ -163,7 +175,8 @@ train:train_lock.o \
   train_tfidf.o \
   train_lda.o \
   train_lda_utils.o \
-  train_cokus.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  train_cokus.o \
+  train_main.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
   ../../../../../../lib2-64/dict/lib/libuldict.a \
   ../../../../../../lib2-64/libcrf/lib/libcrf.a \
   ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
@@ -176,8 +189,44 @@ train:train_lock.o \
 	mkdir -p ./output/bin
 	cp -f --link train ./output/bin
 
+train_raw:train_raw_lock.o \
+  train_raw_dictionary.o \
+  train_raw_segment.o \
+  train_raw_token.o \
+  train_raw_document.o \
+  train_raw_encoding.o \
+  train_raw_corpus.o \
+  train_raw_tfidf.o \
+  train_raw_lda.o \
+  train_raw_lda_utils.o \
+  train_raw_cokus.o \
+  train_raw_main_lda.o
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw[0m']"
+	$(CXX) train_raw_lock.o \
+  train_raw_dictionary.o \
+  train_raw_segment.o \
+  train_raw_token.o \
+  train_raw_document.o \
+  train_raw_encoding.o \
+  train_raw_corpus.o \
+  train_raw_tfidf.o \
+  train_raw_lda.o \
+  train_raw_lda_utils.o \
+  train_raw_cokus.o \
+  train_raw_main_lda.o -Xlinker "-("  ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  ../../../../../../lib2-64/dict/lib/libuldict.a \
+  ../../../../../../lib2-64/libcrf/lib/libcrf.a \
+  ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
+  ../../../../../../lib2-64/postag/lib/libpostag.a \
+  ../../../../../../lib2-64/ullib/lib/libullib.a \
+  ../../../../../../lib2-64/wordseg/libsegment.a \
+  ../../../../../../public/odict/libodict.a -lpthread \
+  -lcrypto \
+  -lrt -Xlinker "-)" -o train_raw
+	mkdir -p ./output/bin
+	cp -f --link train_raw ./output/bin
+
 libsimilarity.a:similarity_lock.o \
-  similarity_main.o \
   similarity_dictionary.o \
   similarity_segment.o \
   similarity_token.o \
@@ -197,7 +246,6 @@ libsimilarity.a:similarity_lock.o \
   model.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_lock.o \
-  similarity_main.o \
   similarity_dictionary.o \
   similarity_segment.o \
   similarity_token.o \
@@ -224,18 +272,6 @@ train_lock.o:lock.cc \
   lock.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_lock.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_lock.o lock.cc
-
-train_main.o:main.cc \
-  segment.h \
-  token.h \
-  singleton.h \
-  lock.h \
-  dictionary.h \
-  document.h \
-  corpus.h \
-  model.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
 
 train_dictionary.o:dictionary.cc \
   log.h \
@@ -313,12 +349,7 @@ train_cokus.o:cokus.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_cokus.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_cokus.o cokus.cc
 
-similarity_lock.o:lock.cc \
-  lock.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lock.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lock.o lock.cc
-
-similarity_main.o:main.cc \
+train_main.o:main.cc \
   segment.h \
   token.h \
   singleton.h \
@@ -327,8 +358,106 @@ similarity_main.o:main.cc \
   document.h \
   corpus.h \
   model.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_main.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_main.o main.cc
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
+
+train_raw_lock.o:lock.cc \
+  lock.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_lock.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_lock.o lock.cc
+
+train_raw_dictionary.o:dictionary.cc \
+  log.h \
+  dictionary.h \
+  document.h \
+  token.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_dictionary.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_dictionary.o dictionary.cc
+
+train_raw_segment.o:segment.cc \
+  log.h \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_segment.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_segment.o segment.cc
+
+train_raw_token.o:token.cc \
+  token.h \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_token.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_token.o token.cc
+
+train_raw_document.o:document.cc \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h \
+  document.h \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_document.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_document.o document.cc
+
+train_raw_encoding.o:encoding.cc \
+  encoding.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_encoding.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_encoding.o encoding.cc
+
+train_raw_corpus.o:corpus.cc \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_corpus.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_corpus.o corpus.cc
+
+train_raw_tfidf.o:tfidf.cc \
+  model.h \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_tfidf.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_tfidf.o tfidf.cc
+
+train_raw_lda.o:lda.cc \
+  model.h \
+  corpus.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_lda.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_lda.o lda.cc
+
+train_raw_lda_utils.o:lda_utils.cc
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_lda_utils.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_lda_utils.o lda_utils.cc
+
+train_raw_cokus.o:cokus.cc \
+  cokus.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_cokus.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_cokus.o cokus.cc
+
+train_raw_main_lda.o:main_lda.cc \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h \
+  dictionary.h \
+  document.h \
+  corpus.h \
+  model.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_main_lda.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_main_lda.o main_lda.cc
+
+similarity_lock.o:lock.cc \
+  lock.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lock.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lock.o lock.cc
 
 similarity_dictionary.o:dictionary.cc \
   log.h \
