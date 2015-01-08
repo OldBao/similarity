@@ -131,6 +131,16 @@ LDAModel::_em(LDAState *ss){
 }
 
 int LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
+  int i;
+  double *var_gamma[1], likelihood, **phi;
+
+  var_gamma[0] =  (double *)malloc (sizeof (double) * _ntopics);
+  phi = (double **) malloc (sizeof (double *) * src.size());
+  for (int n = 0; n < src.size(); n++) {
+    phi[n] = (double *) malloc (sizeof (double) * _ntopics);
+  }
+  likelihood = _infer (src, var_gamma[0], phi);
+
   return 0;
 }
 int LDAModel::inference (const Corpus& corpus, Corpus *ret, bool normalized) {

@@ -9,7 +9,58 @@ bow_t::push_back(const bow_unit_t &u){
   if (u.weight > 1e-12) {
     _total += u.weight;
   }
-  _v.push_back (u);
+
+  vector<bow_unit_t>::iterator iter;
+  for (iter = _v.begin();
+       iter != _v.end();
+       iter++) {
+    if (iter->id > u.id) {
+      break;
+    }
+  }
+
+  _v.insert(iter, u);
+}
+
+double
+bow_t::norm () const{
+  double total = 0.0;
+  
+  for (vector<bow_unit_t>::const_iterator iter = _v.begin();
+       iter != _v.end();
+       iter++)
+    {
+      total += iter->weight * iter->weight;
+    }
+
+  return sqrt (total);
+}
+
+
+double 
+bow_t::cossim(const bow_t &other) const {
+  if (size() == 0 || other.size() == 0) return 0.0;
+  double mynorm = norm(), othernorm = other.norm();
+  double sim = 0.0;
+  
+  size_t i, j;
+  i = j = 0;
+  while (i < size() && j < other.size()) {
+    const bow_unit_t &u1 = _v[i];
+    const bow_unit_t &u2 = other[j];
+      
+    if (u1.id > u2.id) {
+      j++;
+    } else if (u1.id < u2.id){
+      i++;
+    } else {
+      sim += u1.weight * u2.weight;
+      i++;
+      j++;
+    }
+  }
+
+  return sim / (mynorm * othernorm);
 }
 
 

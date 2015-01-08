@@ -37,22 +37,22 @@ mycmp(const pair<int, double>& a, const pair<int, double>& b){
 
 int
 main(int argc, char **argv){
-  if (argc != 4) {
-    cout << "usage : ./train worddict postagdict dir" << endl; 
+  if (argc != 5) {
+    cout << "usage : ./train worddict postagdict stopwords dir" << endl; 
     return -1;
   } 
 
   ul_logstat_t logstat = {16, 0, UL_LOGTTY};
   ul_openlog("./log", "train", &logstat, 1024);
 
-  if ( 0 != Segment::getInstance()->load (argv[1], argv[2])){
+  if ( 0 != Segment::getInstance()->load (argv[1], argv[2], argv[3])){
     cout << "init segment unit error!" << endl;
     return -1;
   }
 
-  size_t max = 100000;
+  size_t max = 10;
 
-  DIR *dir = opendir(argv[3]);
+  DIR *dir = opendir(argv[4]);
   if (!dir) {
     cout << "opendir error" << endl;
     return -1;
@@ -69,7 +69,7 @@ main(int argc, char **argv){
     cout << "Processing : " << entry->d_name << endl; 
 
     string content, title, url;
-    string path(argv[3]);
+    string path(argv[4]);
     path += "/" ;
     path += entry->d_name;
     get_content(path, &url, &content, &title);
@@ -84,27 +84,27 @@ main(int argc, char **argv){
     bow_t bow;
     dict.doc2bow(&bow, document, true);
     corpus.addDoc(bow);
-    /*
-      cout << "Get " << document.getTokens().size() << " Tokens" << endl;
-      for (vector<Token>::const_iterator iter = document.getTokens().begin();
-      iter != document.getTokens().end();
-      iter++)
-      {
-      cout << iter->toString() << endl;
-      }
-    */
 
-    /*
+
+    cout << "Get " << document.getTokens().size() << " Tokens" << endl;
+    for (vector<Token>::const_iterator iter = document.getTokens().begin();
+         iter != document.getTokens().end();
+         iter++)
+      {
+        cout << iter->toString() << endl;
+      }
+
       size_t i, j;
       for (i = 0; i < corpus.size(); i++) {
-      const bow_t& b = corpus[i];
+        const bow_t& b = corpus[i];
       
-      for (j = 0; j < b.size(); j++) {
-      const bow_unit_t &u =  b[j];
-      cout << "[" << dict[u.id] << " : " << u.weight << "]" << endl;
+        for (j = 0; j < b.size(); j++) {
+          const bow_unit_t &u =  b[j];
+          cout << "[" << dict[u.id] << " : " << u.weight << "]" << endl;
+        }
       }
-    }*/
   }
+
   /*
   TFIDFModel* model = new TFIDFModel(&corpus, &dict);
   model->train();
@@ -134,7 +134,8 @@ main(int argc, char **argv){
   delete model;
   closedir(dir);
   */
+  
   LDAModel *model = new LDAModel(&corpus, NULL);
-  model->train();
+  //model->train();
   return 0;
 }

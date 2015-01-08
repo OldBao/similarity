@@ -91,3 +91,25 @@ sm::encoding_utf8_to_wchar(const std::string &utf, std::wstring* wide) {
   
 }
 
+int
+sm::encoding_gbk_to_wchar(const std::string &gbk, std::wstring* wide) {
+  std::string buffer;
+
+  int ret =encoding_iconv(gbk, &buffer, "GBK", "WCHAR_T");
+  if (ret) {
+    return ret;
+  }
+
+  if (buffer.empty()){
+    return 0;
+  }
+
+  assert (buffer.size() % sizeof (wchar_t) == 0);
+
+  const wchar_t *p = reinterpret_cast<const wchar_t *>(buffer.data());
+  const wchar_t *q = p + buffer.size() / sizeof (wchar_t);
+  wide->assign(p, q);
+
+  return 0;
+  
+}

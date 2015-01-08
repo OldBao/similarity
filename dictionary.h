@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <list>
 #include "document.h"
 
 namespace sm {
@@ -25,7 +26,8 @@ namespace sm {
     void resize(size_t size) { _v.resize(size); }
     void clear() { _v.clear(); }
     double total () const{return _total;}
-
+    double cossim (const bow_t & other) const;
+    double norm () const;
   private:
     std::vector<bow_unit_t> _v;
     double _total; //total weight of unit

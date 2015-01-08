@@ -64,7 +64,7 @@ class Token {
     return _desc;
   }
   int length() const;
-
+  const std::string &encoding() const {return _encoding;}
   std::string content;
   int type;
   int weight, lprop, hprop;

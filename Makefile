@@ -286,7 +286,8 @@ train_segment.o:segment.cc \
   segment.h \
   token.h \
   singleton.h \
-  lock.h
+  lock.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_segment.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_segment.o segment.cc
 
@@ -379,7 +380,8 @@ train_raw_segment.o:segment.cc \
   segment.h \
   token.h \
   singleton.h \
-  lock.h
+  lock.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_segment.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_segment.o segment.cc
 
@@ -472,7 +474,8 @@ similarity_segment.o:segment.cc \
   segment.h \
   token.h \
   singleton.h \
-  lock.h
+  lock.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_segment.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_segment.o segment.cc
 
