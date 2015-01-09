@@ -49,7 +49,11 @@ DEP_INCPATH=-I../../../../../../lib2-64/ccode \
   -I../../../../../../public/odict \
   -I../../../../../../public/odict/include \
   -I../../../../../../public/odict/output \
-  -I../../../../../../public/odict/output/include
+  -I../../../../../../public/odict/output/include \
+  -I../../../../../../third-64/gtest \
+  -I../../../../../../third-64/gtest/include \
+  -I../../../../../../third-64/gtest/output \
+  -I../../../../../../third-64/gtest/output/include
 
 #============ CCP vars ============
 CCHECK=@ccheck.py
@@ -61,7 +65,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=89e61bd899e62fb52b3961bcade27119  COMAKE
+COMAKE_MD5=375c9587b51f3018f73bb013fa17bcf6  COMAKE
 
 
 .PHONY:all
@@ -183,7 +187,9 @@ train:train_lock.o \
   ../../../../../../lib2-64/postag/lib/libpostag.a \
   ../../../../../../lib2-64/ullib/lib/libullib.a \
   ../../../../../../lib2-64/wordseg/libsegment.a \
-  ../../../../../../public/odict/libodict.a -lpthread \
+  ../../../../../../public/odict/libodict.a \
+  ../../../../../../third-64/gtest/lib/libgtest.a \
+  ../../../../../../third-64/gtest/lib/libgtest_main.a -lpthread \
   -lcrypto \
   -lrt -Xlinker "-)" -o train
 	mkdir -p ./output/bin
@@ -220,7 +226,9 @@ train_raw:train_raw_lock.o \
   ../../../../../../lib2-64/postag/lib/libpostag.a \
   ../../../../../../lib2-64/ullib/lib/libullib.a \
   ../../../../../../lib2-64/wordseg/libsegment.a \
-  ../../../../../../public/odict/libodict.a -lpthread \
+  ../../../../../../public/odict/libodict.a \
+  ../../../../../../third-64/gtest/lib/libgtest.a \
+  ../../../../../../third-64/gtest/lib/libgtest_main.a -lpthread \
   -lcrypto \
   -lrt -Xlinker "-)" -o train_raw
 	mkdir -p ./output/bin
@@ -314,6 +322,7 @@ train_encoding.o:encoding.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_encoding.o encoding.cc
 
 train_corpus.o:corpus.cc \
+  log.h \
   corpus.h \
   dictionary.h \
   document.h \
@@ -327,6 +336,8 @@ train_tfidf.o:tfidf.cc \
   dictionary.h \
   document.h \
   token.h \
+  test/test_lda.h \
+  test/test_main.h \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_tfidf.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_tfidf.o tfidf.cc
@@ -337,6 +348,8 @@ train_lda.o:lda.cc \
   dictionary.h \
   document.h \
   token.h \
+  test/test_lda.h \
+  test/test_main.h \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_lda.o lda.cc
@@ -358,7 +371,9 @@ train_main.o:main.cc \
   dictionary.h \
   document.h \
   corpus.h \
-  model.h
+  model.h \
+  test/test_lda.h \
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
 
@@ -408,6 +423,7 @@ train_raw_encoding.o:encoding.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_encoding.o encoding.cc
 
 train_raw_corpus.o:corpus.cc \
+  log.h \
   corpus.h \
   dictionary.h \
   document.h \
@@ -421,6 +437,8 @@ train_raw_tfidf.o:tfidf.cc \
   dictionary.h \
   document.h \
   token.h \
+  test/test_lda.h \
+  test/test_main.h \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_tfidf.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_tfidf.o tfidf.cc
@@ -431,6 +449,8 @@ train_raw_lda.o:lda.cc \
   dictionary.h \
   document.h \
   token.h \
+  test/test_lda.h \
+  test/test_main.h \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_lda.o lda.cc
@@ -452,7 +472,9 @@ train_raw_main_lda.o:main_lda.cc \
   dictionary.h \
   document.h \
   corpus.h \
-  model.h
+  model.h \
+  test/test_lda.h \
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_raw_main_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_raw_main_lda.o main_lda.cc
 
@@ -502,6 +524,7 @@ similarity_encoding.o:encoding.cc \
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_encoding.o encoding.cc
 
 similarity_corpus.o:corpus.cc \
+  log.h \
   corpus.h \
   dictionary.h \
   document.h \
@@ -515,6 +538,8 @@ similarity_tfidf.o:tfidf.cc \
   dictionary.h \
   document.h \
   token.h \
+  test/test_lda.h \
+  test/test_main.h \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_tfidf.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_tfidf.o tfidf.cc
@@ -525,6 +550,8 @@ similarity_lda.o:lda.cc \
   dictionary.h \
   document.h \
   token.h \
+  test/test_lda.h \
+  test/test_main.h \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lda.o lda.cc

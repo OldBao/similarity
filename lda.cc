@@ -17,39 +17,53 @@ extern uint32_t randomMT();
 
 #define myrand() (double) (((unsigned long) randomMT()) / 4294967296.)
 
+static inline bool
+_bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
+  return a.weight < b.weight;
+}
+
 LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
   Model(corpus, dict),
-  _alpha(1.0), 
+  _alpha(0.01), 
   _init_alpha(1.0),
   _estimate_alpha(1), //TODO 1 or 0
   _var_max_iter(20),
   _var_converged(1e-6),
   _em_max_iter(100),
-  _em_converged(1e-4),
+  _em_converged(1e-6),
   _max_alpha_iter(1000),
-  _newton_threshold(1e-5),
-  _ntopics(100)
+  _newton_threshold(1e-10),
+  _ntopics(100),
+  _nterms(corpus->getNTerms())
 {
   assert (corpus);
 
+  _init_prob();
+}
+
+
+void
+LDAModel::_init_prob(){
   _log_prob_w = (double **) malloc (sizeof (double *) * _ntopics);
   
   for (int i = 0; i < _ntopics; i++) {
-    _log_prob_w[i] = (double *) malloc (sizeof (double) * corpus->getNTerms());
-    for (int j = 0; j < _corpus->getNTerms(); j++) {
+    _log_prob_w[i] = (double *) malloc (sizeof (double) * _nterms);
+    for (int j = 0; j < _nterms; j++) {
       _log_prob_w[i][j] = 0.0;
     } 
   }
+
 }
 
 
 LDAModel::~LDAModel(){
-  for (int i = 0; i < _ntopics; i++) {
+  if (_log_prob_w){ 
+    for (int i = 0; i < _ntopics; i++) {
       free (_log_prob_w[i]);
+    }
+    free (_log_prob_w);
   }
-  free (_log_prob_w);
 }
-
 
 
 int 
@@ -147,12 +161,148 @@ int LDAModel::inference (const Corpus& corpus, Corpus *ret, bool normalized) {
   return 0;
 }
 
-int LDAModel::save (const std::string &name) { 
+int LDAModel::save (const std::string &path, const std::string &basename) { 
+  char filename[PATH_MAX];
+  int ret;
+  snprintf (filename, PATH_MAX, "%s/%s.meta", path.c_str(), basename.c_str());
+  
+  FILE *fp = fopen(filename, "w");
+  if (!fp) {
+    SM_LOG_WARNING ("open  meta file %s error", filename);
+    goto error;
+  }
+  
+  ret = fprintf (fp, "num-topics %d\nnum-terms%d\nalpha %f\n", _ntopics, _corpus->getNTerms(), _alpha);
+  if (ret < 0) {
+    SM_LOG_WARNING ("write error");
+    goto error;
+  }
+
+  fclose(fp);
+
+  snprintf(filename, PATH_MAX, "%s/%s.beta", path.c_str(), basename.c_str());
+  fp = fopen(filename, "w");
+  if (!fp) {
+    SM_LOG_WARNING ("opening beta file [%s] for writting error", filename);
+    goto error;
+  }
+
+  for (int i = 0; i < _ntopics; i++) {
+    for (int j = 0; j < _nterms; j++) {
+      fprintf (fp, " %5.10f", _log_prob_w[i][j]);
+    }
+    fprintf (fp, "\n");
+  }
+  fclose(fp);
+  
   return 0;
+ error:
+  if (fp) fclose(fp);
+  return -1;
 }
-int LDAModel::load (const std::string &name) {
+
+
+int LDAModel::load (const std::string &path, const std::string &basename) {
+  char filename[PATH_MAX];
+  int nterms;
+
+  snprintf (filename, PATH_MAX, "%s/%s.meta", path.c_str(), basename.c_str());
+
+  FILE *fp = fopen (filename, "r");
+  if (!fp) {
+    SM_LOG_WARNING ("open meta file %s error", filename);
+    goto error;
+  }
+  if (3 != fscanf (fp, "num-topics %d\nnum-terms%d\nalpha %f\n", 
+                   &_ntopics, &nterms, &_alpha) )
+    {
+      SM_LOG_WARNING ("meta file format error!");
+      goto error;
+    }
+
+  SM_LOG_DEBUG ("opening meta file %s success", filename);
+  fclose(fp);
+
+  assert (nterms == _nterms);
+  _init_prob();
+
+  snprintf (filename, PATH_MAX, "%s/%s.beta", path.c_str(), basename.c_str());
+  fp = fopen(filename, "r");
+  if (!fp) {
+    SM_LOG_WARNING ("open beta file %s error", filename);
+    goto error;
+  }
+
+  for (int i = 0; i < _ntopics; i++) {
+    for (int j = 0; j < nterms; j++) {
+      float x;
+      if ( 1 != fscanf (fp, "%f", &x)){
+        SM_LOG_WARNING ("beta file format error");
+        goto error;
+      }
+
+      _log_prob_w[i][j] = x;
+        
+    }
+  }
+
+  fclose(fp);
   return 0;
+ error:
+  if (fp) {
+    fclose(fp);
+  }
+  if (_log_prob_w){
+    for (int i = 0; i < _ntopics; i++) {
+      free (_log_prob_w[i]);
+      }
+    free(_log_prob_w);
+  }
+
+  return -1;
 }
+
+void
+LDAModel::getHotestWords (bow_t *bow, int topicid, int nwords) {
+  assert (topicid >=1 && topicid <= _ntopics);
+  bow_unit_t tmp;
+  int i;
+  bow->clear();
+
+  for (i = 0; i < _nterms; i++) {
+    tmp.id = i;
+    tmp.weight = _log_prob_w[topicid-1][i];
+    bow->push_back(tmp);
+    push_heap (bow->v.begin(), bow->v.end(), _bow_cmp);
+    if (bow->size() > nwords) {
+      pop_heap (bow->v.begin(), bow->v.end(), _bow_cmp);
+      bow->v.pop_back();
+    }
+  }
+  bow->sort();
+
+}
+
+void
+LDAModel::getHotestWordsDesc(string *desc, int topicid, int nwords){
+  bow_t bow;
+  getHotestWords(&bow, topicid, nwords);
+  
+  stringstream ss;
+  ss << "Topic [" << topicid-1 << "]: ";
+
+  for (size_t i = 0; i < bow.size(); i++) {
+    if (_dict) {
+      ss << _dict->at(bow[i].id);
+    } else {
+      ss << bow[i].id;
+    }
+    ss << "*" << bow[i].weight << " ";
+  }
+  
+  desc->assign (ss.str());
+}
+
 
 double 
 LDAModel::_e_step(const bow_t& doc, 
@@ -191,7 +341,7 @@ LDAModel::_mle (LDAState* ss, int estimate_alpha) {
   int k; int w;
 
   for (k = 0; k < _ntopics; k++) {
-    for (w = 0; w < _corpus->getNTerms(); w++) {
+    for (w = 0; w < _nterms; w++) {
       if (ss->class_word[k][w] > 0) {
         _log_prob_w[k][w] =
           log(ss->class_word[k][w]) -
@@ -340,6 +490,7 @@ LDAState::LDAState(const Corpus &corpus, int topics, int num_init):
   class_word =  (double **)  malloc (sizeof (double) * _ntopics);
   class_total = (double *)  malloc (sizeof (double*) * _ntopics);
 
+
   for (i = 0; i < _ntopics; i++) {
     class_total[i] = 0.0;
     class_word[i] = (double *) malloc (sizeof (double) * _nterms);
@@ -348,10 +499,10 @@ LDAState::LDAState(const Corpus &corpus, int topics, int num_init):
     }
   }
 
+  /*
   for (k = 0; k < _ntopics; k++) {
     for (i = 0; i < num_init; i++) {
-      //d = floor(myrand() * corpus.size());
-      d = 0;
+      d = floor(myrand() * corpus.size());
       SM_LOG_DEBUG ("initialized with document %d", d);
       const bow_t& doc = corpus[d];
       for (n = 0; n < doc.size(); n++) {
@@ -363,7 +514,13 @@ LDAState::LDAState(const Corpus &corpus, int topics, int num_init):
       class_word[k][n] += 1.0;
       class_total[k] = class_total[k] + class_word[k][n];
     }
-  }
+    }*/
+
+  for (k = 0; k < _ntopics; k++)
+    for (n = 0; n < _nterms; n++) {
+      class_word[k][n] += 1.0/_nterms + myrand();
+      class_total[k] += class_word[k][n];
+    }
 }
 
 LDAState::~LDAState(){

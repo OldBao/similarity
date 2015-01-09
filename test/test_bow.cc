@@ -29,7 +29,7 @@ TEST_F (BowTestCase, TestNormNormal) {
 
 
 TEST_F (BowTestCase, TestCosSim) {
-  bow_unit_t u1 = {1, 10}, u2 = {1, 20}, u3 = {3, 10}, u4 = {4, 10};
+  bow_unit_t u1 = {1, 10}, u2 = {2, 20}, u3 = {3, 10}, u4 = {4, 10};
   bow_t bow1, bow2, bow3;
   bow1.push_back (u1);
   bow1.push_back (u2);
@@ -46,3 +46,36 @@ TEST_F (BowTestCase, TestCosSim) {
   
   ASSERT_NEAR (bow1.cossim(bow1), 1.0, 1e-10);
 }
+
+
+TEST_F (BowTestCase, TestSort){
+  bow_unit_t u1 = {1, 10}, u2 = {2, 20}, u3 = {3, 5}, u4 = {4, 1};
+  bow_t bow;
+  bow.push_back (u1);
+  bow.push_back (u2);
+  bow.push_back (u3);
+  bow.push_back (u4);
+
+  bow.sort();
+
+  ASSERT_EQ (bow[3].id, 4);
+  ASSERT_EQ (bow[3].weight, 1);
+  ASSERT_EQ (bow[2].id, 3);
+  ASSERT_EQ (bow[2].weight, 5);
+  ASSERT_EQ (bow[1].id, 1);
+  ASSERT_EQ (bow[1].weight, 10);
+  ASSERT_EQ (bow[0].id, 2);
+  ASSERT_EQ (bow[0].weight, 20);
+
+  bow.resize(2);
+  ASSERT_EQ(bow.size(), 2);
+  ASSERT_EQ (bow[0].id, 2);
+  ASSERT_EQ (bow[0].weight, 20);
+  ASSERT_EQ (bow[1].id, 1);
+  ASSERT_EQ (bow[1].weight, 10);
+  
+  bow.clear();
+  ASSERT_EQ(bow.size(), 0);
+    
+}
+

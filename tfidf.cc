@@ -22,7 +22,7 @@ TFIDFModel::TFIDFModel (Corpus *corpus, Dictionary *dict) :
   assert (corpus);
 
   if (dict) {
-    _ndoc = dict->getNDoc();
+    _ndoc = corpus->size();
     _nnz = dict->getNnz();
     _dfs = dict->getDfs();
   } else {
@@ -96,9 +96,9 @@ TFIDFModel::inference (const bow_t &src, bow_t *dest, bool normalize) {
 }
 
 
-int TFIDFModel::save (const std::string &name){
+int TFIDFModel::save (const std::string &path, const std::string& basename){
   return 0;
 }
-int TFIDFModel::load (const std::string &name){
+int TFIDFModel::load (const std::string &name, const std::string& basename){
   return 0;
 }

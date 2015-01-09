@@ -6,11 +6,11 @@
 #ifdef DEBUG
 
 #include <stdio.h>
-#define SM_LOG_FATAL printf
-#define SM_LOG_WARNING printf
-#define SM_LOG_NOTICE printf
+#define SM_LOG_FATAL(fmt, arg...) printf(fmt "\n", ##arg) 
+#define SM_LOG_WARNING(fmt, arg...) printf(fmt "\n", ##arg) 
+#define SM_LOG_NOTICE(fmt, arg...) printf(fmt "\n", ##arg) 
 #define SM_LOG_DEBUG(fmt, arg...) printf(fmt "\n", ##arg) 
-#define SM_LOG_TRACE printf
+#define SM_LOG_TRACE(fmt, arg...) printf(fmt "\n", ##arg) 
 
 #endif
 #ifdef NDEBUG

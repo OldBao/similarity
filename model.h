@@ -4,6 +4,8 @@
 #include "corpus.h"
 #include "dictionary.h"
 
+#include "test/test_lda.h"
+
 #include <vector>
 namespace sm {
   class Model {
@@ -14,8 +16,8 @@ namespace sm {
     virtual int train() = 0;
     virtual int inference (const bow_t &src, bow_t *ret, bool normalized=false) = 0;
     virtual int inference (const Corpus& corpus, Corpus *ret, bool normalized=false) = 0;
-    virtual int save (const std::string &name) = 0;
-    virtual int load (const std::string &name) = 0;
+    virtual int save (const std::string &path, const std::string &name) = 0;
+    virtual int load (const std::string &path, const std::string &name) = 0;
 
   protected:
     Dictionary *_dict;
@@ -39,8 +41,8 @@ namespace sm {
     
     const std::vector<double> idf() {return _idf;}
 
-    virtual int save(const std::string &fname);
-    virtual int load(const std::string &fname);
+    virtual int save(const std::string &path, const std::string &basename);
+    virtual int load(const std::string &path, const std::string &basename);
   };
 
 
@@ -69,10 +71,14 @@ namespace sm {
     int inference (const bow_t &src, bow_t *ret, bool normalized=false);
     int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
     
-    virtual int save(const std::string &fname);
-    virtual int load(const std::string &fname);
+    virtual int save(const std::string &path, const std::string &name);
+    virtual int load(const std::string &path, const std::string &name);
+
+    void getHotestWordsDesc(std::string *desc, int topicid, int nwords = 10);
+    void getHotestWords(bow_t *bow, int topicid, int nwords = 10);
 
   private:
+    void _init_prob();
     void _em (LDAState *ss);
     void _mle (LDAState *s, int estimate_alpha);
     double _e_step (const bow_t &doc, double *gamma, double **phi, LDAState *ss);
@@ -88,8 +94,11 @@ namespace sm {
     float _em_converged;
     int _max_alpha_iter;
     double _newton_threshold;
-    int _ntopics;
+    int _ntopics, _nterms;
     double **_log_prob_w;
+
+    //test 
+    FRIEND_TEST (LDATestCase, TestTopkHotwords);
   };
 };
 #endif

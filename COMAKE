@@ -34,6 +34,7 @@ CONFIGS('lib2-64/ccode@ccode_3-5-18-1_PD_BL')
 CONFIGS('lib2-64/postag@postag_1-3-6-0_PD_BL')
 
 CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
+CONFIGS('third-64/gtest@gtest_1-6-0-100_PD_BL')
 
 
 

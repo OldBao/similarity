@@ -20,16 +20,22 @@ namespace sm {
   class bow_s {
   public:
     void push_back(const bow_unit_t &u);
-    size_t size() const {return _v.size(); }
-    const bow_unit_t &operator[](size_t i) const { return _v[i]; }
-    void reserve(size_t size) { _v.reserve(size); }
-    void resize(size_t size) { _v.resize(size); }
-    void clear() { _v.clear(); }
+
+    //this function is for convenient
+    size_t size() const {return v.size(); }
+    const bow_unit_t &operator[](size_t i) const { return v[i]; }
+    const bow_unit_t &at(size_t i) const { return v[i]; }
+    void reserve(size_t size) { v.reserve(size); }
+    void resize(size_t size) { v.resize(size); }
+    void clear() { v.clear(); }
+
     double total () const{return _total;}
     double cossim (const bow_t & other) const;
     double norm () const;
+    void sort();
+
+    std::vector<bow_unit_t> v;
   private:
-    std::vector<bow_unit_t> _v;
     double _total; //total weight of unit
   };
 
@@ -53,17 +59,20 @@ namespace sm {
       return _words.size();
     }
 
-    int save();
+    int save(const std::string &path, const std::string& name);
+    int load(const std::string &path, const std::string& name);
 
-    int getNDoc () { return _nDocs; }
     int getNnz () { return _nnz; }
     std::vector<int>& getDfs() {return _dfs;}
-    std::string& operator [](size_t id);
+    const std::string& operator [](size_t id) const;
+    const std::string& at(size_t id) const;
 
+    const std::vector<std::string> getWords() {return _words;} 
+    const std::map<std::string, int> getWordsMap() {return _wordmap;} 
   private:
     void _update();
     std::string _desc;
-    int _nDocs, _nPos, _nnz;
+    int  _nPos, _nnz;
     std::vector<std::string> _words;
     std::map <std::string, int> _wordmap;
     std::vector<int> _dfs;

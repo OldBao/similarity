@@ -1,3 +1,4 @@
+#include "log.h"
 #include "corpus.h"
 
 using namespace std;
@@ -5,22 +6,7 @@ using namespace sm;
 
 static int getMaxIdFromBow (const bow_t & bow);
 
-Corpus::Corpus(Dictionary *dict) : _rw(NULL), _dict(dict), _nterms(0), _mdl(0){
-}
-
-int
-Corpus::setRWType (int type){
-  if (_rw) {
-    delete _rw;
-  }
-
-  if (type == CORPUS_TYPE_BLEI) {
-    _rw = new BleiCorpusRW();
-  } else {
-    return -1;
-  }
-
-  return 0;
+Corpus::Corpus(Dictionary *dict) : _dict(dict), _nterms(0), _mdl(0){
 }
 
 int
@@ -80,33 +66,113 @@ Corpus::_update(){
 }
 
 
-CorpusRW::CorpusRW(){}
-CorpusRW::~CorpusRW(){}
-
-
-BleiCorpusRW::BleiCorpusRW(){
-
-}
-
-BleiCorpusRW::~BleiCorpusRW(){
-
-}
 int
-BleiCorpusRW::serialize(const std::vector<bow_t> &bows, std::string *dest) {
+Corpus::save(const std::string& path, const std::string &basename){
+  char filename[PATH_MAX];
+  FILE *fp = NULL;
+  int ret;
+  int length;
+  int line = 0;
+  int id;
+  double weight;
+  bow_t bow;
+  bow_unit_t u;
 
+  snprintf (filename, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
+  fp = fopen(filename, "w");
+  if (!fp) {
+    SM_LOG_WARNING ("OPEN corpus file [%s] for writing error", filename);
+    goto error;
+  }
+
+  for (int i = 0; i < _docs.size(); i++) {
+    const bow_t& b = _docs[i];
+    ret = fprintf (fp, "%d ", b.size());
+    
+    if (ret < 0){
+      SM_LOG_WARNING ("write corpus file error");
+      goto error;
+    }
+    for (int j = 0; j < b.size(); j++) {
+      ret = fprintf (fp, "%d:%.10f ", b.v[j].id, b.v[j].weight);
+      if (ret < 0) {
+        SM_LOG_WARNING ("write corpus file error");
+        goto error;
+      }
+    }
+    fprintf (fp, "\n");
+  }
+
+  fclose(fp);
+  return  0;
+
+ error:
+  if (fp) fclose (fp);
+  return -1;
 }
 
+int
+Corpus::load(const std::string &path, const std::string &basename){
+  char filename[PATH_MAX];
+  FILE *fp = NULL;
+  int ret;
+  int length;
+  int line = 0;
+  int id;
+  double weight;
+  bow_t bow;
+  bow_unit_t u;
 
-int 
-BleiCorpusRW::deserialize(const std::string &src, std::vector <bow_t> *bows ) {
+  
+  snprintf (filename, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
+  fp = fopen(filename, "r");
+  if (!fp) {
+    SM_LOG_WARNING ("OPEN file [%s] for reading error", filename);
+    goto error;
+  }
 
+  line = 0;
+  while (1) {
+    ret = fscanf (fp, "%10d", &length);
+    line++;
+    if (ret == EOF) break;
+    else if (ret != 1) {
+      SM_LOG_WARNING ("file [%s] format error", filename);
+      goto error;
+    }
+
+    if (length == 0) continue;
+
+    bow.clear();
+    for (int n = 0; n < length; n++) {
+      ret = fscanf (fp, "%10d:%20lf", &id, &weight);
+      if (ret != 2) {
+        SM_LOG_WARNING("file [%s:%d:%d] format error", filename, line, n);
+        goto error;
+      }
+      u.id = id;
+      u.weight = weight;
+      bow.push_back(u);
+    }
+
+    addDoc(bow);
+  }
+  
+  fclose(fp);
+
+  SM_LOG_NOTICE ("load corpus: %d docs, %d terms", size(), _nterms);
+  
+  return 0;
+  
+ error:
+  if (fp) fclose(fp);
+  return -1;
 }
-
 
 static int getMaxIdFromBow (const bow_t & bow) {
   int max = -1;
   for (size_t i = 0; i < bow.size(); i++) {
-    const bow_unit_t& u = bow[i];
+    const bow_unit_t& u = bow.v[i];
       if (u.id > max) max = u.id;
     }
 
