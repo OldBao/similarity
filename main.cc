@@ -85,7 +85,7 @@ main(int argc, char **argv){
       get_content(path, &url, &content, &title);
       Document document(content, title, "utf8");
       
-      if ( 0 != document.analysis(accept)){
+      if ( 0 != document.analysis(~0)){
         cout << "analysis document error" << endl;
         max+=1;
         continue;

@@ -19,7 +19,7 @@ extern uint32_t randomMT();
 
 static inline bool
 _bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
-  return a.weight < b.weight;
+  return a.weight > b.weight;
 }
 
 LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
