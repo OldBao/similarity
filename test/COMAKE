@@ -1,0 +1,29 @@
+#edit-mode: -*- python -*-
+#coding:gbk
+
+WORKROOT('../../../../../../../')
+
+CopyUsingHardLink(True)
+
+global DEBUG
+
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.0.0.0\\\"')
+
+if DEBUG:
+    CXXFLAGS('-g -O0 -pipe -W -Wall -fPIC -DDEBUG')
+else:
+    CXXFLAGS('-g -O2 -pipe -W -Wall -fPIC -DNDEBUG')
+
+LDFLAGS('-lpthread -lcrypto -lrt')
+ImportConfigsFrom("..")
+INCPATHS('. ./include ./output ./output/include ../')
+LIBS('../libsimilarity.a')
+
+CONFIGS('third-64/gtest@gtest_1-6-0-100_PD_BL')
+
+user_sources='test_main.cc test_encoding.cc test_dictionary.cc test_tfidf.cc test_bow.cc test_lda.cc'
+user_headers='test_main.h test_encoding.h test_dictionary.h test_tfidf.h test_bow.h test_lda.h'
+
+Application('test',Sources(user_sources))
+
+
