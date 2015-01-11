@@ -66,12 +66,24 @@ TFIDFModel::train (){
 
 
 int
-TFIDFModel::inference (const Corpus  &corpus, Corpus *cor, bool normalize) {
+TFIDFModel::inference (const Corpus  &corpus, Corpus *dest, bool normalize) {
+  bow_t ret;
+
+  for (size_t i = 0; i < corpus.size(); i++) {
+    if (0 == i % 1000) {
+        SM_LOG_DEBUG ("computed %d", i);
+    }
+    assert ( 0 == inference (corpus[i], &ret, normalize) );
+    assert ( 0 == dest->addDoc (ret)) ;
+  }
+
   return 0;
+  
 }
 
 int
 TFIDFModel::inference (const bow_t &src, bow_t *dest, bool normalize) {
+  dest->clear();
   dest->reserve (src.size());
 
   for (size_t i = 0; i < src.size(); i++) {
@@ -89,16 +101,8 @@ TFIDFModel::inference (const bow_t &src, bow_t *dest, bool normalize) {
     }
 
   if (normalize) {
-    //TODO
+    dest->unitvec();
   }
 
-  return 0;
-}
-
-
-int TFIDFModel::save (const std::string &path, const std::string& basename){
-  return 0;
-}
-int TFIDFModel::load (const std::string &name, const std::string& basename){
   return 0;
 }

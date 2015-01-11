@@ -1,5 +1,6 @@
 #include "log.h"
 #include "corpus.h"
+#include "model.h"
 
 using namespace std;
 using namespace sm;
@@ -20,6 +21,7 @@ Corpus::addDoc(const bow_t &bow) {
   if (ret+1 > _nterms) {
     _nterms = ret+1;
   }
+
   _update();
   return 0;
 }
@@ -48,7 +50,7 @@ Corpus::size() const {
 
 const bow_t &
 Corpus::at(size_t i) const{
-  assert (i >= 0 && i < _docs.size());
+  assert (i < _docs.size());
 
   return _docs[i];
 }
@@ -65,18 +67,12 @@ Corpus::_update(){
   _desc.assign (buffer);
 }
 
-
 int
 Corpus::save(const std::string& path, const std::string &basename){
   char filename[PATH_MAX];
   FILE *fp = NULL;
   int ret;
-  int length;
-  int line = 0;
-  int id;
-  double weight;
   bow_t bow;
-  bow_unit_t u;
 
   snprintf (filename, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
   fp = fopen(filename, "w");
@@ -85,16 +81,18 @@ Corpus::save(const std::string& path, const std::string &basename){
     goto error;
   }
 
-  for (int i = 0; i < _docs.size(); i++) {
+  for (size_t i = 0; i < _docs.size(); i++) {
     const bow_t& b = _docs[i];
-    ret = fprintf (fp, "%d ", b.size());
+    if (b.size() == 0) continue;
+    ret = fprintf (fp, "%zu ", b.size());
     
     if (ret < 0){
       SM_LOG_WARNING ("write corpus file error");
       goto error;
     }
-    for (int j = 0; j < b.size(); j++) {
-      ret = fprintf (fp, "%d:%d ", b.v[j].id, (int)b.v[j].weight);
+
+    for (size_t j = 0; j < b.size(); j++) {
+      ret = fprintf (fp, "%d:%.10lf ", b.v[j].id, b.v[j].weight);
       if (ret < 0) {
         SM_LOG_WARNING ("write corpus file error");
         goto error;
@@ -111,6 +109,7 @@ Corpus::save(const std::string& path, const std::string &basename){
   return -1;
 }
 
+
 int
 Corpus::load(const std::string &path, const std::string &basename){
   char filename[PATH_MAX];
@@ -119,7 +118,7 @@ Corpus::load(const std::string &path, const std::string &basename){
   int length;
   int line = 0;
   int id;
-  int weight;
+  double weight;
   bow_t bow;
   bow_unit_t u;
 
@@ -145,7 +144,7 @@ Corpus::load(const std::string &path, const std::string &basename){
 
     bow.clear();
     for (int n = 0; n < length; n++) {
-      ret = fscanf (fp, "%10d:%10d", &id, &weight);
+      ret = fscanf (fp, "%d:%lf", &id, &weight);
       if (ret != 2) {
         SM_LOG_WARNING("file [%s:%d:%d] format error", filename, line, n);
         goto error;
@@ -154,6 +153,8 @@ Corpus::load(const std::string &path, const std::string &basename){
       u.weight = weight;
       bow.push_back(u);
     }
+
+    assert(bow.size() == length);
 
     addDoc(bow);
   }

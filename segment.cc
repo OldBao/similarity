@@ -34,7 +34,7 @@ Segment::load (const std::string &path, const std::string& postag_path, const st
     }
 
     char encoding[MAX_WORD_SIZE];
-    wchar_t line[MAX_WORD_SIZE];
+    char line[MAX_WORD_SIZE];
     fscanf (fp, "%s", encoding);
     wtrans_func_t *trans = get_wtrans(encoding);
     if (!trans) {
@@ -43,13 +43,15 @@ Segment::load (const std::string &path, const std::string& postag_path, const st
     }
 
     while (true) {
-      int ret = fwscanf (fp, L"%ls", line);
+      int ret = fscanf (fp, "%s", line);
       if (ret == EOF) break;
       if (ret != 1) {
         SM_LOG_WARNING ("something wrong happens");
         continue;
       }
-      _stop_words.insert (line);
+      wstring tmp;
+      trans(line, &tmp);
+      _stop_words.insert (tmp);
     }
 
     SM_LOG_DEBUG ("Add %zu stop words to list", _stop_words.size());

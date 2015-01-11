@@ -41,8 +41,8 @@ namespace sm {
     
     const std::vector<double> idf() {return _idf;}
 
-    virtual int save(const std::string &path, const std::string &basename);
-    virtual int load(const std::string &path, const std::string &basename);
+    virtual int save(const std::string &path, const std::string &basename) { return 0;}
+    virtual int load(const std::string &path, const std::string &basename) {return 0;}
   };
 
 

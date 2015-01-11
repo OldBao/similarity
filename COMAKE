@@ -43,7 +43,7 @@ user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h mode
 
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 Application('train', Sources ("main.cc"), Libraries('-lsimilarity'))
-#Application('train_raw',Sources(user_sources) + Sources("main_lda.cc"))
+Application('sim',Sources("sim_main.cc"), Libraries('-lsimilarity'))
 #SharedLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 SubDirectory('test')
 

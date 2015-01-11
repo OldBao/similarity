@@ -30,12 +30,38 @@ myfgets(char *buf, size_t len, FILE *fp) {
   return f;
 }
 
+
+double
+bow_t::total() const{
+  double ret = 0.0;
+
+  for (vector<bow_unit_t>::const_iterator iter = v.begin();
+       iter != v.end();
+       iter++)
+    {
+      ret += iter->weight;
+    }
+
+  return ret;
+}
+
+void
+bow_t::resize(size_t s) {
+  v.resize(s);
+}
+
+void
+bow_t::clear() {
+  v.clear();
+}
+
+void 
+bow_t::reserve(size_t s) { 
+  v.reserve(s); 
+}
+
 void
 bow_t::push_back(const bow_unit_t &u){
-  if (u.weight > 1e-12) {
-    _total += u.weight;
-  }
-
   vector<bow_unit_t>::iterator iter;
   for (iter = v.begin();
        iter != v.end();
@@ -48,18 +74,28 @@ bow_t::push_back(const bow_unit_t &u){
   v.insert(iter, u);
 }
 
+void
+bow_t::unitvec(){
+  double n = norm();
+
+  for (vector<bow_unit_t>::iterator iter = v.begin();
+       iter != v.end();
+       iter++){
+    iter->weight *= 1.0 / n;
+  }
+}
+
+
 double
 bow_t::norm () const{
-  double total = 0.0;
-  
+  double tmp = 0.0;
   for (vector<bow_unit_t>::const_iterator iter = v.begin();
        iter != v.end();
        iter++)
     {
-      total += iter->weight * iter->weight;
+      tmp += iter->weight * iter->weight;
     }
-
-  return sqrt (total);
+  return sqrt (tmp);
 }
 
 
@@ -291,7 +327,6 @@ Dictionary::load (const std::string &path, const std::string &base) {
   FILE *fp;
   wtrans_func_t *w;
   wstring buffer;
-  char *c;
 
   snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), base.c_str());
   fp = fopen(filename, "r");

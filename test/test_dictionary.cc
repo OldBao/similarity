@@ -13,7 +13,7 @@ using namespace sm;
 
 TEST_F(DictionaryTestCase, TestLineWithNewline) {
   string line = UTF8_SHORT_LINE_WITH_NEWLINE;
-  Document doc(line, "", "utf8");
+  Document doc(line, "",  "", "utf8");
 
   ASSERT_EQ(0, doc.analysis());
   ASSERT_EQ(1, doc.getTokens().size());
@@ -27,7 +27,7 @@ TEST_F(DictionaryTestCase, TestLineWithNewline) {
 TEST_F(DictionaryTestCase, TestDupToken) {
   Dictionary dict;
   string line = UTF8_SHORT_LINE;
-  Document doc(line, "", "utf8");
+  Document doc(line, "", "", "utf8");
 
   ASSERT_EQ(0, doc.analysis());
   ASSERT_EQ(0, dict.addDocument(doc));

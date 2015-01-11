@@ -5,9 +5,10 @@
 using namespace std;
 using namespace sm;
 
-Document::Document(const std::string &content, const std::string &title, const std::string& encoding) :
+Document::Document(const std::string &content, const std::string &title, const std::string& id, const std::string& encoding) :
   _content (content),
   _title (title),
+  _id (id), 
   _encoding(encoding)
 {
   

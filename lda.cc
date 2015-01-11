@@ -1,5 +1,6 @@
 #include "model.h"
 #include "log.h"
+#include "encoding.h"
 
 using namespace std;
 using namespace sm;
@@ -102,7 +103,7 @@ LDAModel::_em(LDAState *ss){
   converged = 1;
   while (((converged < 0) || (converged > _em_converged) || (i <= 2)) && (i <= _em_max_iter)) {
     i++; 
-    SM_LOG_DEBUG("**** em iteration %zu ****", i);
+    SM_LOG_DEBUG("**** em iteration %d ****", i);
     likelihood = 0;
     
     ss->zero ();
@@ -172,7 +173,7 @@ int LDAModel::save (const std::string &path, const std::string &basename) {
     goto error;
   }
   
-  ret = fprintf (fp, "num-topics %d\nnum-terms%d\nalpha %f\n", _ntopics, _corpus->getNTerms(), _alpha);
+  ret = fprintf (fp, "num-topics %d\nnum-terms %d\nalpha %f\n", _ntopics, _corpus->getNTerms(), _alpha);
   if (ret < 0) {
     SM_LOG_WARNING ("write error");
     goto error;
@@ -213,7 +214,7 @@ int LDAModel::load (const std::string &path, const std::string &basename) {
     SM_LOG_WARNING ("open meta file %s error", filename);
     goto error;
   }
-  if (3 != fscanf (fp, "num-topics %d\nnum-terms%d\nalpha %f\n", 
+  if (3 != fscanf (fp, "num-topics %d\nnum-terms %d\nalpha %f\n", 
                    &_ntopics, &nterms, &_alpha) )
     {
       SM_LOG_WARNING ("meta file format error!");
@@ -290,11 +291,16 @@ LDAModel::getHotestWordsDesc(string *desc, int topicid, int nwords, const std::s
   
   string buffer;
   stringstream ss;
+  rwtrans_func_t *w = get_rwtrans(encoding);
+  assert(w);
+
   ss << "Topic [" << topicid-1 << "]: ";
 
   for (size_t i = 0; i < bow.size(); i++) {
+    buffer.clear();
     if (_dict) {
-
+      const wstring &d = _dict->at(bow[i].id);
+      assert (0 == w (d, &buffer) );
       ss << buffer;
     } else {
       ss << bow[i].id;

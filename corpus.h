@@ -32,7 +32,7 @@ namespace sm {
     std::string _desc;
     Dictionary *_dict;
     int _nterms;
-    int _mdl;
+    size_t _mdl;
   };
 };
 #endif

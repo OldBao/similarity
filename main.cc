@@ -9,6 +9,7 @@
 #include "dictionary.h"
 #include "corpus.h"
 #include "model.h"
+#include "encoding.h"
 
 using namespace sm;
 using namespace std;
@@ -75,6 +76,9 @@ main(int argc, char **argv){
 
     int fail = 0, success = 0;
      
+    char path[PATH_MAX];
+    snprintf (path, PATH_MAX, "%s/docmap", argv[6]);
+    FILE *docmap = fopen(path, "w");
     while (corpus.size() <= max) {
       struct dirent *entry = readdir(dir);
 
@@ -87,7 +91,7 @@ main(int argc, char **argv){
       path += "/" ;
       path += entry->d_name;
       get_content(path, &url, &title, &content);
-      Document document(content, title, "utf8");
+      Document document(content, title, entry->d_name, "utf8");
       
       if ( 0 != document.analysis(accept)){
         cout << "analysis document error" << endl;
@@ -98,6 +102,14 @@ main(int argc, char **argv){
       bow_t bow;
       dict.doc2bow(&bow, document, true);
       bow.sort();
+      cout << "Doc [" << corpus.size() << "]" << endl;
+      for (int i = 0; i < bow.size(); i++) {
+        string buffer;
+        encoding_wchar_to_utf8(dict[bow[i].id], &buffer);
+        cout << buffer << "*" << bow[i].weight << " ";
+      }
+      cout << endl;
+      if (bow.size() == 0) continue;
       corpus.addDoc(bow);
       
       success++;
@@ -106,6 +118,8 @@ main(int argc, char **argv){
         mycorpus << bow[i].id << ":" << bow[i].weight << " ";
       }
       mycorpus << endl;
+
+      fprintf (docmap, "%s %zu\n", entry->d_name, corpus.size()-1);
     }
 
     cout << "Handle Success: " << success << " Failed : " << fail << endl;
@@ -114,6 +128,13 @@ main(int argc, char **argv){
 
   
     dict.save (argv[6], "sim");
+    Corpus tfidf_corpus;
+    TFIDFModel model(&corpus, &dict);
+    cout << "begin computing tfidf" << endl;
+    model.train();
+    model.inference(corpus, &tfidf_corpus, true);
+    cout << "end computing tfidf" << endl;
+    tfidf_corpus.save(argv[6], "tfidf");
     corpus.save (argv[6], "sim");
 
     /*
@@ -158,7 +179,7 @@ main(int argc, char **argv){
         return -1;
     }
 
-    if ( 0 != corpus.load(argv[2], "sim")){
+    if ( 0 != corpus.load(argv[2], "tfidf")){
         cout << "load model error" << endl;
         return -1;
     }
@@ -169,7 +190,7 @@ main(int argc, char **argv){
 
   else if (mode == "show") {
     int nwords;
-    if (argc < 4) {
+    if (argc < 3) {
         cout << "usage : ./train show modeldir" << endl;
         cout << "eg : ./train show model" << endl;
         return -1;
@@ -186,7 +207,6 @@ main(int argc, char **argv){
       cout << "load corpus error" << endl;
       return -1;
     }
-   
 
     LDAModel *model = new LDAModel(&corpus, &dict);
 

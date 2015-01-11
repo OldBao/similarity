@@ -25,18 +25,17 @@ namespace sm {
     size_t size() const {return v.size(); }
     const bow_unit_t &operator[](size_t i) const { return v[i]; }
     const bow_unit_t &at(size_t i) const { return v[i]; }
-    void reserve(size_t size) { v.reserve(size); }
-    void resize(size_t size) { v.resize(size); }
-    void clear() { v.clear(); }
+    void reserve(size_t size);
+    void resize(size_t size);
+    void clear();
 
-    double total () const{return _total;}
+    double total () const;
     double cossim (const bow_t & other) const;
     double norm () const;
+    void unitvec();
     void sort();
 
     std::vector<bow_unit_t> v;
-  private:
-    double _total; //total weight of unit
   };
 
 

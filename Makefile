@@ -65,11 +65,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=25a67343cb36734dde9961452c0bf2ea  COMAKE
+COMAKE_MD5=d976094da03a8eebf8bbb5132e51336a  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check libsimilarity.a train test 
+all:comake2_makefile_check libsimilarity.a train sim test 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -100,6 +100,8 @@ clean:ccpclean
 	rm -rf ./output/include/model.h
 	rm -rf train
 	rm -rf ./output/bin/train
+	rm -rf sim
+	rm -rf ./output/bin/sim
 	$(MAKE) -C test clean
 	rm -rf similarity_lock.o
 	rm -rf similarity_dictionary.o
@@ -113,6 +115,7 @@ clean:ccpclean
 	rm -rf similarity_lda_utils.o
 	rm -rf similarity_cokus.o
 	rm -rf train_main.o
+	rm -rf sim_sim_main.o
 
 .PHONY:dist
 dist:
@@ -185,6 +188,25 @@ train:train_main.o \
 	mkdir -p ./output/bin
 	cp -f --link train ./output/bin
 
+sim:sim_sim_main.o \
+  -lsimilarity
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim[0m']"
+	$(CXX) sim_sim_main.o -Xlinker "-(" -lsimilarity ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  ../../../../../../lib2-64/dict/lib/libuldict.a \
+  ../../../../../../lib2-64/libcrf/lib/libcrf.a \
+  ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
+  ../../../../../../lib2-64/postag/lib/libpostag.a \
+  ../../../../../../lib2-64/ullib/lib/libullib.a \
+  ../../../../../../lib2-64/wordseg/libsegment.a \
+  ../../../../../../public/odict/libodict.a \
+  ../../../../../../third-64/gtest/lib/libgtest.a \
+  ../../../../../../third-64/gtest/lib/libgtest_main.a -lpthread \
+  -lcrypto \
+  -lrt \
+  -L. -Xlinker "-)" -o sim
+	mkdir -p ./output/bin
+	cp -f --link sim ./output/bin
+
 .PHONY:test
 test:
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest[0m']"
@@ -244,7 +266,10 @@ similarity_corpus.o:corpus.cc \
   corpus.h \
   dictionary.h \
   document.h \
-  token.h
+  token.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_corpus.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_corpus.o corpus.cc
 
@@ -268,7 +293,8 @@ similarity_lda.o:lda.cc \
   token.h \
   test/test_lda.h \
   test/test_main.h \
-  log.h
+  log.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lda.o lda.cc
 
@@ -291,9 +317,25 @@ train_main.o:main.cc \
   corpus.h \
   model.h \
   test/test_lda.h \
-  test/test_main.h
+  test/test_main.h \
+  encoding.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
+
+sim_sim_main.o:sim_main.cc \
+  segment.h \
+  token.h \
+  singleton.h \
+  lock.h \
+  dictionary.h \
+  document.h \
+  corpus.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h \
+  encoding.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim_sim_main.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o sim_sim_main.o sim_main.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 
