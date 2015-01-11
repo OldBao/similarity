@@ -74,7 +74,7 @@ namespace sm {
     virtual int save(const std::string &path, const std::string &name);
     virtual int load(const std::string &path, const std::string &name);
 
-    void getHotestWordsDesc(std::string *desc, int topicid, int nwords = 10);
+    void getHotestWordsDesc(std::string *desc, int topicid, int nwords = 10, const std::string &encoding="utf8");
     void getHotestWords(bow_t *bow, int topicid, int nwords = 10);
 
   private:

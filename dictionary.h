@@ -59,22 +59,23 @@ namespace sm {
       return _words.size();
     }
 
-    int save(const std::string &path, const std::string& name);
+    int save(const std::string &path, const std::string& name, const std::string &encoding="UTF8");
     int load(const std::string &path, const std::string& name);
 
     int getNnz () { return _nnz; }
     std::vector<int>& getDfs() {return _dfs;}
-    const std::string& operator [](size_t id) const;
-    const std::string& at(size_t id) const;
+    const std::wstring& operator [](size_t id) const;
+    const std::wstring& at(size_t id) const;
+    const std::string at(size_t id, const std::string &encoding) const;
 
-    const std::vector<std::string> getWords() {return _words;} 
-    const std::map<std::string, int> getWordsMap() {return _wordmap;} 
+    const std::vector<std::wstring> getWords() {return _words;} 
+    const std::map<std::wstring, int> getWordsMap() {return _wordmap;} 
   private:
     void _update();
     std::string _desc;
     int  _nPos, _nnz;
-    std::vector<std::string> _words;
-    std::map <std::string, int> _wordmap;
+    std::vector<std::wstring> _words;
+    std::map <std::wstring, int> _wordmap;
     std::vector<int> _dfs;
     uint64_t _mask;
   };

@@ -27,7 +27,11 @@ static void get_content(const string &fn, string *url, string *title, string *co
   buffer << fs.rdbuf();
   
   content->assign(buffer.str());
-
+  /*
+  cout << "url : " << *url << endl;
+  cout << "title : " << *title << endl;
+  cout << "content : " << *content << endl;
+*/
 }
 
 
@@ -48,16 +52,14 @@ main(int argc, char **argv){
   fstream mycorpus("mycorpus.txt", ios::out);
 
   if (mode == "build") {
-
-
     if (argc < 6) {
-      cout << "usage : ./train build worddict postagdict stopwords dir [max_url_count]" << endl; 
-      cout << "egg : ./train worddict postag stopwords.utf8 gallery 50" << endl;
+      cout << "usage : ./train build worddict postagdict stopwords dir outputdir [max_url_count]" << endl; 
+      cout << "egg : ./train worddict postag stopwords.utf8 gallery model 50" << endl;
       return -1;
     }
     int max = 10;
-    if (argc == 7) {
-      max = atoi(argv[6]);
+    if (argc == 8) {
+      max = atoi(argv[7]);
     }
 
     if ( 0 != Segment::getInstance()->load (argv[2], argv[3], argv[4])){
@@ -71,6 +73,8 @@ main(int argc, char **argv){
       return -1;
     }
 
+    int fail = 0, success = 0;
+     
     while (corpus.size() <= max) {
       struct dirent *entry = readdir(dir);
 
@@ -82,12 +86,12 @@ main(int argc, char **argv){
       string path(argv[5]);
       path += "/" ;
       path += entry->d_name;
-      get_content(path, &url, &content, &title);
+      get_content(path, &url, &title, &content);
       Document document(content, title, "utf8");
       
-      if ( 0 != document.analysis(~0)){
+      if ( 0 != document.analysis(accept)){
         cout << "analysis document error" << endl;
-        max+=1;
+        fail++;
         continue;
       }
       
@@ -96,6 +100,7 @@ main(int argc, char **argv){
       bow.sort();
       corpus.addDoc(bow);
       
+      success++;
       mycorpus << bow.size() << " ";
       for (int i = 0; i < bow.size(); i++) {
         mycorpus << bow[i].id << ":" << bow[i].weight << " ";
@@ -103,11 +108,13 @@ main(int argc, char **argv){
       mycorpus << endl;
     }
 
+    cout << "Handle Success: " << success << " Failed : " << fail << endl;
+
     mycorpus.close();
 
   
-    dict.save ("model", "sim");
-    corpus.save ("model", "sim");
+    dict.save (argv[6], "sim");
+    corpus.save (argv[6], "sim");
 
     /*
       TFIDFModel* model = new TFIDFModel(&corpus, &dict);
@@ -141,25 +148,49 @@ main(int argc, char **argv){
   }
   
   else if (mode == "train") {
-    dict.load("model", "sim");
-    corpus.load("model", "sim");
-    LDAModel *model = new LDAModel(&corpus, &dict);
+    if (argc != 3) {
+        cout << "usage : ./train train modeldir" << endl;
+        cout << "eg : ./train train model" << endl;
+        return -1;
+    }
+    if ( 0 != dict.load(argv[2], "sim")){
+        cout << "load dict error" << endl;
+        return -1;
+    }
+
+    if ( 0 != corpus.load(argv[2], "sim")){
+        cout << "load model error" << endl;
+        return -1;
+    }
+    LDAModel *model = new LDAModel(&corpus, NULL);
     model->train();
-    model->save("model", "lda");
+    model->save(argv[2], "lda");
   }
 
   else if (mode == "show") {
     int nwords;
-    if (argc == 3) {
-      nwords = atoi(argv[2]);
+    if (argc < 4) {
+        cout << "usage : ./train show modeldir" << endl;
+        cout << "eg : ./train show model" << endl;
+        return -1;
     }
-    dict.load("model", "sim");
-    corpus.load("model", "sim");
+
+    if (argc == 4) {
+      nwords = atoi(argv[3]);
+    }
+    if ( 0 != dict.load(argv[2], "sim") ) {
+      cout << "load dict error" << endl;
+      return -1;
+    }
+    if ( 0 != corpus.load(argv[2], "sim")) {
+      cout << "load corpus error" << endl;
+      return -1;
+    }
    
 
     LDAModel *model = new LDAModel(&corpus, &dict);
 
-    if (-1 == model->load("model", "lda")){
+    if (-1 == model->load(argv[2], "lda")){
       return -1;
     }
 
@@ -168,6 +199,7 @@ main(int argc, char **argv){
       model->getHotestWordsDesc(&ret, i, nwords);
       cout << ret << endl;
     }
+    delete model;
   } else {
     cout << "invalid mode" << endl;
   }

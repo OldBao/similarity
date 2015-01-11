@@ -3,7 +3,7 @@
 
 double log_sum(double log_a, double log_b)
 {
-  double v;
+  double v = 0.0;
 
   if (log_a < log_b)
   {
@@ -13,7 +13,7 @@ double log_sum(double log_a, double log_b)
   {
       v = log_a+log(1 + exp(log_b-log_a));
   }
-  return(v);
+  return v;
 }
 
  /**
@@ -27,8 +27,8 @@ double log_sum(double log_a, double log_b)
 
 double trigamma(double x)
 {
-    double p;
-    int i;
+    double p = 0.0;
+    int i = 0;
 
     x=x+6;
     p=1/(x*x);

@@ -80,7 +80,8 @@ LDAModel::train(){
 
 void
 LDAModel::_em(LDAState *ss){
-  size_t d, n, i, max_length;
+  size_t d, n, max_length;
+  int i;
   double **var_gamma, **phi;
   double likelihood, likelihood_old = 0, converged = 1;
 
@@ -145,7 +146,6 @@ LDAModel::_em(LDAState *ss){
 }
 
 int LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
-  int i;
   double *var_gamma[1], likelihood, **phi;
 
   var_gamma[0] =  (double *)malloc (sizeof (double) * _ntopics);
@@ -284,16 +284,18 @@ LDAModel::getHotestWords (bow_t *bow, int topicid, int nwords) {
 }
 
 void
-LDAModel::getHotestWordsDesc(string *desc, int topicid, int nwords){
+LDAModel::getHotestWordsDesc(string *desc, int topicid, int nwords, const std::string& encoding){
   bow_t bow;
   getHotestWords(&bow, topicid, nwords);
   
+  string buffer;
   stringstream ss;
   ss << "Topic [" << topicid-1 << "]: ";
 
   for (size_t i = 0; i < bow.size(); i++) {
     if (_dict) {
-      ss << _dict->at(bow[i].id);
+
+      ss << buffer;
     } else {
       ss << bow[i].id;
     }

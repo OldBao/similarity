@@ -9,20 +9,8 @@ using namespace std;
 
 static const int scw_flags = SCW_OUT_ALL | SCW_OUT_PROP;
 static const int MAX_TOKENS = 10240;
-
+static const int MAX_WORD_SIZE = 1024;
 SM_IMP_SINGLETON(Segment);
-typedef int (wtrans_func_t)(const string &src, wstring *dest);
-
-static wtrans_func_t *get_wtrans(const std::string &encoding) {
-  if (0==strncasecmp(encoding.c_str(), "utf8", 16) ||
-      0==strncasecmp(encoding.c_str(), "utf-8",16)) {
-    return encoding_utf8_to_wchar;
-  } else if ( 0==strncasecmp(encoding.c_str(), "gbk", 16)) {
-    return encoding_gbk_to_wchar;
-  } else {
-    return NULL;
-  }
-}
 
 
 int
@@ -37,28 +25,31 @@ Segment::load (const std::string &path, const std::string& postag_path, const st
     return -1;
   }
 
+  FILE *fp = NULL;
   if (!stopword_file.empty()) {
-    fstream sf(stopword_file.c_str(), ios::in | ios::binary);
-    if (!sf.is_open()) {
+    fp = fopen(stopword_file.c_str(), "r");
+    if (!fp) {
       SM_LOG_FATAL ("open stop words file %s fail", stopword_file.c_str());
       return -1;
     }
 
-    string encoding, line;
-    wstring s;
-    sf >> encoding;
+    char encoding[MAX_WORD_SIZE];
+    wchar_t line[MAX_WORD_SIZE];
+    fscanf (fp, "%s", encoding);
     wtrans_func_t *trans = get_wtrans(encoding);
     if (!trans) {
       SM_LOG_FATAL ("stop word txt format error!, please set encoding header to file");
       return -1;
     }
 
-    while (!sf.eof ()) {
-      sf >> line;
-      
-      if (0 == trans(line, &s)) {
-        _stop_words.insert (s);
+    while (true) {
+      int ret = fwscanf (fp, L"%ls", line);
+      if (ret == EOF) break;
+      if (ret != 1) {
+        SM_LOG_WARNING ("something wrong happens");
+        continue;
       }
+      _stop_words.insert (line);
     }
 
     SM_LOG_DEBUG ("Add %zu stop words to list", _stop_words.size());
@@ -79,8 +70,7 @@ Segment::~Segment(){
 int
 Segment::segment(vector<Token> *ret_tokens, const string &line, 
                  uint64_t mask,
-                 const std::string& encoding, 
-                 const std::string& token_encoding)
+                 const std::string& encoding)
 {
   scw_out_t *out = NULL;
   int ret;
@@ -110,7 +100,7 @@ Segment::segment(vector<Token> *ret_tokens, const string &line,
   
   for (i = 0; i < ret; i++) {
     if (SM_POS2TYPE(tokens[i].type) & mask) {
-      Token token(tokens[i], token_encoding);
+      Token token(tokens[i]);
       if (!_token_stopped(token))
         ret_tokens->push_back(token);
     }
@@ -130,13 +120,8 @@ Segment::segment(vector<Token> *ret_tokens, const string &line,
 
 bool
 Segment::_token_stopped(const Token &t) {
-  wtrans_func_t *trans = get_wtrans(t.encoding());
-  if (trans) {
-    wstring ret;
-    trans (t.content, &ret);
-    if (_stop_words.find(ret) != _stop_words.end()) {
-      return true;
-    }
+  if (_stop_words.find(t.content) != _stop_words.end()) {
+    return true;
   }
 
   return false;

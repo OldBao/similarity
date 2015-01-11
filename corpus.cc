@@ -94,7 +94,7 @@ Corpus::save(const std::string& path, const std::string &basename){
       goto error;
     }
     for (int j = 0; j < b.size(); j++) {
-      ret = fprintf (fp, "%d:%.10f ", b.v[j].id, b.v[j].weight);
+      ret = fprintf (fp, "%d:%d ", b.v[j].id, (int)b.v[j].weight);
       if (ret < 0) {
         SM_LOG_WARNING ("write corpus file error");
         goto error;
@@ -119,7 +119,7 @@ Corpus::load(const std::string &path, const std::string &basename){
   int length;
   int line = 0;
   int id;
-  double weight;
+  int weight;
   bow_t bow;
   bow_unit_t u;
 
@@ -145,7 +145,7 @@ Corpus::load(const std::string &path, const std::string &basename){
 
     bow.clear();
     for (int n = 0; n < length; n++) {
-      ret = fscanf (fp, "%10d:%20lf", &id, &weight);
+      ret = fscanf (fp, "%10d:%10d", &id, &weight);
       if (ret != 2) {
         SM_LOG_WARNING("file [%s:%d:%d] format error", filename, line, n);
         goto error;

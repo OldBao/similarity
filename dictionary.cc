@@ -1,12 +1,14 @@
 #include <algorithm>
 #include "log.h"
 #include "dictionary.h"
+#include "encoding.h"
 
 using namespace sm;
 using namespace std;
 
 static const int DICT_MAX_WORD_LEN = 1024;
-static const int CHECK_ID = 1000;
+#define ESCAPE  ' '
+
 
 static inline bool
 _bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
@@ -16,6 +18,16 @@ _bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
 void
 bow_t::sort(){
   std::sort(v.begin(), v.end(), _bow_cmp);
+}
+
+char *
+myfgets(char *buf, size_t len, FILE *fp) {
+  char *f;
+  f = fgets(buf, len, fp);
+  if (!f) return f;
+
+  if ((f = strchr(buf, '\n')) != NULL) *f = '\0';
+  return f;
 }
 
 void
@@ -122,9 +134,11 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
        iter != document.getTokens().end();
        iter++){
     {
-      if (iter->length() == 1) {
+      //filter words only contains one character
+      if (iter->content.length() == 1) {
         continue;
       }
+
       if (_wordmap.find(iter->content) != _wordmap.end()) {
         id = _wordmap[iter->content];
       } else {
@@ -189,25 +203,35 @@ Dictionary::_update() {
 }
 
 
-const std::string & 
+const std::wstring & 
 Dictionary::operator [](size_t id) const{
   return at(id);
 }
 
 
-const std::string & 
-Dictionary::at(size_t id) const{
-  //assert (id <= _words.size() && id > 0);
+const std::string
+Dictionary::at(size_t id, const std::string &encoding) const {
+  string buffer;
 
+  rwtrans_func_t *w = get_rwtrans(encoding);
+  w(_words[id], &buffer);
+  return buffer;
+}
+
+const std::wstring & 
+Dictionary::at(size_t id) const {
+  //assert (id <= _words.size() && id > 0);
   return _words[id];
 }
 
 
 int
-Dictionary::save(const std::string& path, const std::string &basename){
+Dictionary::save(const std::string& path, const std::string &basename, const std::string &encoding){
   char filename[PATH_MAX];
   FILE *fp = NULL;
   int ret;
+  rwtrans_func_t *w;
+  string buffer;
 
   snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), basename.c_str());
   fp = fopen(filename, "w");
@@ -230,15 +254,21 @@ Dictionary::save(const std::string& path, const std::string &basename){
     goto error;
   }
 
+  ret = fprintf (fp, "%s\n", encoding.c_str());
+  if (ret < 0) {
+    SM_LOG_WARNING ("write to file error");
+    goto error;
+  }
+
   SM_LOG_DEBUG ("writing %zu word to file [%s]", _words.size(), filename);
+  w = get_rwtrans(encoding);
+  assert (w);
   for (size_t i = 0; i < _words.size(); i++)
     {
-      if (i % CHECK_ID == 0) {
-        fprintf (fp, "%d\n", i);
-      }
-
-      ret = fprintf (fp, "%s %d\n", _words[i].c_str(), _dfs[i]);
-      if (ret < 0) {
+      buffer.clear();
+      w(_words[i], &buffer);
+      ret = fprintf (fp, "%d%c%s\n", _dfs[i], ESCAPE, buffer.c_str());
+      if (-1 == ret) {
         SM_LOG_WARNING ("write dictionary error");
         goto error;
       }
@@ -254,14 +284,14 @@ Dictionary::save(const std::string& path, const std::string &basename){
 
 int
 Dictionary::load (const std::string &path, const std::string &base) {
-  char filename[PATH_MAX];
-  int ret, id, check_id;
-  char word[MAX_WORD_LEN];
+  char filename[PATH_MAX], word[MAX_WORD_LEN];
+  int id, line, dfs, wordcount;
   vector<string> contents;
-  int lineno, wordcount;
   map<int, int> frequencies;
   FILE *fp;
-  int dfs;
+  wtrans_func_t *w;
+  wstring buffer;
+  char *c;
 
   snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), base.c_str());
   fp = fopen(filename, "r");
@@ -269,6 +299,7 @@ Dictionary::load (const std::string &path, const std::string &base) {
     SM_LOG_WARNING ("open dict meta [%s] for load error", filename);
     goto error;
   }
+
   if ( 2 != fscanf( fp, "non-zero-entry %d\nword-num %d\n", &_nnz, &wordcount) ) {
     SM_LOG_WARNING ("read dict meta content error");
     goto error;
@@ -283,28 +314,42 @@ Dictionary::load (const std::string &path, const std::string &base) {
     goto error;
   }
 
-  id = 0;
+  id = 0, line = 0;
   _dfs.resize(wordcount);
+
+  //get file encoding
+  if (NULL == myfgets (word, MAX_WORD_LEN, fp)) {
+    SM_LOG_WARNING("get encoding line error");
+    goto error;
+  }
+
+  w = get_wtrans(word);
+  if (!w) {
+    SM_LOG_WARNING("invalid encoding : %s", word);
+    goto error;
+  }
+
   while (1) {
-    if (id % CHECK_ID == 0) {
-      fscanf (fp, "%d", &check_id);
-      if (check_id != id) {
-        SM_LOG_WARNING ("check dict id error");
-        goto error;
-      }
-    }
-
     if (id > wordcount) break;
-
-    ret = fscanf (fp, "%s %d", word, &dfs);
-    if (ret == EOF) break;
-    if (ret != 2) {
-      SM_LOG_WARNING ("dict format error");
+    memset (word, 0, sizeof word);
+    if (myfgets (word, MAX_WORD_LEN, fp) == NULL ){
+      break;
+    }
+    char *sep = strchr(word, ESCAPE);
+    if (!sep) {
+      SM_LOG_WARNING("dict format error in line %d", line);
       goto error;
     }
+    *sep = '\0';
+    if (1 != sscanf (word, "%d", &dfs)){
+      SM_LOG_WARNING("dict format error in line %d", line);
+      goto error;
+    }
+    w(sep+1, &buffer);
+    line++;
     
-    _words.push_back(word);
-    _wordmap[word] = id;
+    _words.push_back(buffer);
+    _wordmap[buffer] = id;
     _dfs[id] = dfs;
     id++;
   }

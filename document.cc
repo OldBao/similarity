@@ -19,12 +19,16 @@ Document::~Document(){
 
 int
 Document::analysis(uint64_t mask){
-  string gbk_content;
   int ret;
-  if (_encoding == "utf8") {
+  string gbk_content;
+
+  if (strcasecmp(_encoding.c_str(), "utf8") == 0 || 
+      strcasecmp(_encoding.c_str(), "utf-8") == 0) {
     ret = encoding_utf8_to_gbk(_content, &gbk_content);
     if (ret)
       return ret;
+  } else {
+    gbk_content = _content;
   }
 
   if ( 0 != Segment::getInstance()->segment (&_tokens, gbk_content, mask)){

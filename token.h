@@ -57,23 +57,19 @@ namespace sm {
 
 class Token {
  public:
-  Token(const std::string &encoding="utf8");
-  Token(token_t scw_token, const std::string &encoding="utf8");
+  Token();
+  Token(token_t scw_token, const std::string &encoding="gbk");
 
   const std::string& toString() const{
     return _desc;
   }
-  int length() const;
-  const std::string &encoding() const {return _encoding;}
-  std::string content;
+  std::wstring content;
   int type;
   int weight, lprop, hprop;
 
  private:
   std::string _desc;
-  std::string _encoding;
  
-  int _length;
   void format();
 };
 }

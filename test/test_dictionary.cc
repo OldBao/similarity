@@ -5,8 +5,24 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "encoding.h"
+
 using namespace std;
 using namespace sm;
+
+
+TEST_F(DictionaryTestCase, TestLineWithNewline) {
+  string line = UTF8_SHORT_LINE_WITH_NEWLINE;
+  Document doc(line, "", "utf8");
+
+  ASSERT_EQ(0, doc.analysis());
+  ASSERT_EQ(1, doc.getTokens().size());
+
+  wstring buffer;
+  encoding_utf8_to_wchar(UTF8_SHORT_LINE_WITHOUT_NEWLINE, &buffer);
+  ASSERT_EQ(buffer, doc.getTokens().at(0).content);
+}
+
 
 TEST_F(DictionaryTestCase, TestDupToken) {
   Dictionary dict;
@@ -36,10 +52,11 @@ TEST_F (DictionaryTestCase, TestTwoDifferenctToken){
 
 TEST_F(DictionaryTestCase, TestSave) {
   Dictionary dict;
-  Document doc1(UTF8_SHORT_LINE, "", "utf8");
-  Document doc2(UTF8_SHORT_LINE2, "", "utf8");
+  Document doc1(GBK_SHORT_LINE, "", "GBK");
+  Document doc2(GBK_SHORT_LINE2, "", "GBK");
   int id;
   string word;
+  string encoding;
   int dfs, nnz, wn;
 
   ASSERT_EQ(0, doc1.analysis());
@@ -48,10 +65,10 @@ TEST_F(DictionaryTestCase, TestSave) {
   dict.addDocument(doc1);
   dict.addDocument(doc2);
 
-  ASSERT_EQ(0, dict.save("/tmp", "__tmp"));
+  ASSERT_EQ(0, dict.save("/tmp", "__tmp_gbk", "GBK"));
 
-  const char *expect_fp = "/tmp/__tmp.dict";
-  const char *expect_fp_meta = "/tmp/__tmp.dict.meta";
+  const char *expect_fp = "/tmp/__tmp_gbk.dict";
+  const char *expect_fp_meta = "/tmp/__tmp_gbk.dict.meta";
   struct stat s;
 
   ASSERT_EQ(0, stat(expect_fp, &s));
@@ -62,14 +79,15 @@ TEST_F(DictionaryTestCase, TestSave) {
   
   fstream is(expect_fp, ios::in);
 
-  is >> id;
-  ASSERT_EQ(id, 0);
-  is >> word >> dfs;
-  ASSERT_STREQ(word.c_str(), UTF8_SHORT_TOKEN);
+  is >> encoding;
+  ASSERT_STREQ (encoding.c_str(), "GBK");
+
+  is >> dfs >> word;
+  ASSERT_STREQ(word.c_str(), GBK_SHORT_TOKEN);
   ASSERT_EQ (dfs, 1);
-  is >> word >> dfs;
+  is >> dfs >> word;
   ASSERT_EQ (dfs, 1);
-  ASSERT_STREQ(word.c_str(), UTF8_SHORT_TOKEN2);
+  ASSERT_STREQ(word.c_str(), GBK_SHORT_TOKEN2);
   is >> word;
   ASSERT_TRUE(is.eof());
 
