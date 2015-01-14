@@ -24,6 +24,17 @@ namespace sm {
     Corpus *_corpus;
   };
 
+  class TopicModel : public Model {
+  public:
+    TopicModel (Corpus *corpus, Dictionary *dict) : Model(corpus, dict){}
+    virtual ~TopicModel(){}
+
+    virtual int getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold=0.5, int max_result=3) = 0;
+
+    virtual int getNTopics() = 0;
+    virtual int getDocsOfTopic (vector<int> *, int topicid = -1) = 0;
+  };
+
 
   class TFIDFModel : public Model{
   private:
@@ -33,7 +44,7 @@ namespace sm {
 
   public:
     TFIDFModel (Corpus *corpus, Dictionary *dict);
-    ~TFIDFModel();
+    virtual ~TFIDFModel();
 
     int train();
     int inference (const bow_t &src, bow_t *ret, bool normalized=false);
@@ -62,18 +73,21 @@ namespace sm {
     LDAState(LDAState &);
   };
 
-  class LDAModel : public Model {
+  class LDAModel : public TopicModel {
   public:
     LDAModel (Corpus *corpus, Dictionary *dict);
-    ~LDAModel ();
+    virtual ~LDAModel ();
     
     int train();
     int inference (const bow_t &src, bow_t *ret, bool normalized=false);
     int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
-    
+
+    virtual int getNTopics() {return _ntopics;}
     virtual int save(const std::string &path, const std::string &name);
     virtual int load(const std::string &path, const std::string &name);
 
+    virtual int getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold=0.5, int max_result=3);
+    virtual int getDocsOfTopic (vector<int> *ret, int topicid = -1);
     void getHotestWordsDesc(std::string *desc, int topicid, int nwords = 10, const std::string &encoding="utf8");
     void getHotestWords(bow_t *bow, int topicid, int nwords = 10);
 
@@ -85,6 +99,7 @@ namespace sm {
     double _infer(const bow_t& doc, double* var_gamma, double** phi);
     double _compute_likelihood(const bow_t& doc, double** phi, double* var_gamma);
     double _opt_alpha(double ss, int D, int K);
+    int _cluster();
     double _alpha;
     double _init_alpha;
     int _estimate_alpha;
@@ -96,6 +111,10 @@ namespace sm {
     double _newton_threshold;
     int _ntopics, _nterms;
     double **_log_prob_w;
+    double **_var_gamma;
+    double **_phi;
+
+    vector<vector<int> > _topics; 
 
     //test 
     FRIEND_TEST (LDATestCase, TestTopkHotwords);

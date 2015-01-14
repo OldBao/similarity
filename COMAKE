@@ -25,25 +25,31 @@ INCPATHS('. ./include ./output ./output/include')
 
 LDFLAGS('-lpthread -lcrypto -lrt -L.')
 
-CONFIGS('lib2-64/ullib@base')
+#CONFIGS('public/mola/commonapi@commonapi_1-0-39-2_PD_BL')
+#CONFIGS('inf/ds/mola/api@api_1-2-1-3_PD_BL')
+CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
+CONFIGS('lib2-64/ullib@ullib_3-1-86-0_PD_BL')
 CONFIGS('lib2-64/wordseg@wordseg_3-2-1-1_PD_BL')
 CONFIGS('lib2-64/dict@dict_3-1-17-0_PD_BL')
 CONFIGS('lib2-64/libcrf@libcrf_2-1-3-0_PD_BL')
 CONFIGS('lib2-64/others-ex@others-ex_3-1-14-2_PD_BL')
 CONFIGS('lib2-64/ccode@ccode_3-5-18-1_PD_BL')
 CONFIGS('lib2-64/postag@postag_1-3-6-0_PD_BL')
-
-CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
 CONFIGS('third-64/gtest@gtest_1-6-0-100_PD_BL')
+#CONFIGS('public/idlcompiler@idlcompiler_2-0-12-0_PD_BL')
+#CONFIGS('app/search/ksarch/store/proxy-lib/redis@redis_1-0-7-0_PD_BL')
+#CONFIGS('app/search/ksarch/store/libmemcached@libmemcached_1-4-14-1_PD_BL')
+#CONFIGS('app/search/ksarch/store/neclient@neclient_1-0_5_1_PD_BL')
+CONFIGS('app/mobile/flyflow/server/lib/storage@storage_1-0-1-0_PD_BL')
 
-
-
-user_sources='lock.cc dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc'
-user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h'
+user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc'
+user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h'
 
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 Application('train', Sources ("main.cc"), Libraries('-lsimilarity'))
 Application('sim',Sources("sim_main.cc"), Libraries('-lsimilarity'))
+Application('server',Sources("server.cc"), Libraries('-lsimilarity'))
+
 #SharedLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 SubDirectory('test')
 

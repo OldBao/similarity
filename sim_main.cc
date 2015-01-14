@@ -10,6 +10,7 @@
 #include "corpus.h"
 #include "model.h"
 #include "encoding.h"
+#include "similarity.h"
 
 using namespace sm;
 using namespace std;
@@ -20,6 +21,7 @@ main(int argc, char **argv){
     cout << "usage ./sim model_dict" << endl;
     return -1;
   }
+
   Dictionary dict;
   Corpus corpus;
   if ( 0 != dict.load(argv[1], "sim")){
@@ -32,22 +34,19 @@ main(int argc, char **argv){
     return -1;
   }
 
-
-  double max_sim = 0.0;
-  int max;
-  for (int i = 0; i < corpus.size()-1; i++) {
-    const bow_t &src = corpus[i];
-    max_sim = max = -1;
-    for (int j = 0; j < corpus.size()-1; j++) {
-      if (j == i) continue;
-      const bow_t &dest = corpus[j];
-      double sim = src.cossim(dest);
-      if (sim > max_sim) {
-        max_sim = sim;
-        max = j;
-      }
-    }
-    cout << i << " " << max << " " << max_sim << endl;
+  TopicModel *model = new LDAModel(&corpus, &dict);
+  if ( 0 != model->load (argv[1], "lda")){
+    cout << "load lda error" << endl;
+    return -1;
   }
+
+  corpus.truncate();
+
+  Similarity *sim = new TopicSimilarity (model, &corpus, &dict, 3);
+  for (int i = 1; i <= model->getNTopics(); i++) {
+    sim->calculate(i);
+  }
+  
+  sim->waitAllJobDone();
   return 0;
 }

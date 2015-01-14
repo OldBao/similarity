@@ -79,6 +79,11 @@ main(int argc, char **argv){
     char path[PATH_MAX];
     snprintf (path, PATH_MAX, "%s/docmap", argv[6]);
     FILE *docmap = fopen(path, "w");
+    if (!docmap) {
+        cout << "open doc map error" << endl;
+        return -1;
+    }
+
     while (corpus.size() <= max) {
       struct dirent *entry = readdir(dir);
 
@@ -101,14 +106,7 @@ main(int argc, char **argv){
       
       bow_t bow;
       dict.doc2bow(&bow, document, true);
-      bow.sort();
-      cout << "Doc [" << corpus.size() << "]" << endl;
-      for (int i = 0; i < bow.size(); i++) {
-        string buffer;
-        encoding_wchar_to_utf8(dict[bow[i].id], &buffer);
-        cout << buffer << "*" << bow[i].weight << " ";
-      }
-      cout << endl;
+      bow.pre_handle();
       if (bow.size() == 0) continue;
       corpus.addDoc(bow);
       
@@ -126,7 +124,6 @@ main(int argc, char **argv){
 
     mycorpus.close();
 
-  
     dict.save (argv[6], "sim");
     Corpus tfidf_corpus;
     TFIDFModel model(&corpus, &dict);
@@ -136,36 +133,6 @@ main(int argc, char **argv){
     cout << "end computing tfidf" << endl;
     tfidf_corpus.save(argv[6], "tfidf");
     corpus.save (argv[6], "sim");
-
-    /*
-      TFIDFModel* model = new TFIDFModel(&corpus, &dict);
-      model->train();
-      
-      int idx = 0;
-      
-      const vector<double>& v = model->idf();
-      
-      vector < pair<int, double> > m;
-      m.resize(v.size());
-      for (size_t i = 0; i < v.size(); i++) {
-      m[i] = pair<int, double>(i, v[i]);
-      }
-      
-      cout << "soring..." << endl;
-      sort (m.begin(), m.end(), mycmp);
-      cout << "sorted.." << endl;
-      
-      for (vector< pair<int, double> >::const_iterator iter = m.begin();
-      iter != m.end();
-      iter++)
-      {
-      cout << "[" << dict[iter->first] << " : " << iter->second << "]" << endl;
-      idx++;
-      }
-      
-      delete model;
-      closedir(dir);
-    */
   }
   
   else if (mode == "train") {
@@ -183,13 +150,14 @@ main(int argc, char **argv){
         cout << "load model error" << endl;
         return -1;
     }
+
     LDAModel *model = new LDAModel(&corpus, NULL);
     model->train();
     model->save(argv[2], "lda");
   }
 
   else if (mode == "show") {
-    int nwords;
+    int nwords = 5;
     if (argc < 3) {
         cout << "usage : ./train show modeldir" << endl;
         cout << "eg : ./train show model" << endl;
@@ -213,14 +181,48 @@ main(int argc, char **argv){
     if (-1 == model->load(argv[2], "lda")){
       return -1;
     }
-
-    for (int i = 1; i <= 100; i++) {
+    
+    
+    char fullpath[PATH_MAX];
+    snprintf (fullpath, PATH_MAX, "%s/topwords", argv[2]);
+    fstream tw(fullpath, ios::out);
+    for (int i = 1; i <= model->getNTopics(); i++) {    
       string ret;
-      model->getHotestWordsDesc(&ret, i, nwords);
-      cout << ret << endl;
+      model->getHotestWordsDesc (&ret, i, nwords);
+      tw << "Topic [" << i <<"]" << ret << endl;
     }
+
+
+    snprintf (fullpath, PATH_MAX, "%s/docmap", argv[2]);
+    fstream docfile(fullpath, ios::in);
+    map<int, string> docmap;
+    while (!docfile.eof()) {
+      int id; string docid;
+      docfile >> id >>  docid;
+      docmap[id] = docid;
+    }
+    tw.close();
+    
+    FILE **fps = (FILE **)malloc (sizeof (FILE *) * model->getNTopics());
+
+    for (int i = 1; i <= model->getNTopics(); i++) {
+      snprintf (fullpath, PATH_MAX, "%s/details/%d", argv[2], i);
+      fps[i] = fopen(fullpath, "r");
+    }
+
+    for (int i = 0; i < corpus.size(); i++) {
+      bow_t ret;
+      cout << "computing " << i << " ";
+      model->getMostLikelyTopicOfDoc (&ret, i, 0.0, 1);
+      cout << "likely topic " << ret[0].id << " likelihood: " << ret[0].weight;
+
+      if (ret.size() > 0) {
+        fprintf (fps[ret[0].id], "%s\n", docmap[i].c_str());
+      }
+    }
+    
     delete model;
-  } else {
+  }else {
     cout << "invalid mode" << endl;
   }
 

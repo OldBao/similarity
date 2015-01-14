@@ -21,6 +21,7 @@ class Document {
   void getContent(std::string *ret, const std::string &encoding);
   const std::string &getId() {return _id;}
   void getTitle(std::string *ret, const std::string &encoding);
+
  private:
   std::string _content, _title, _id;
   std::vector<Token> _tokens;

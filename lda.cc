@@ -18,27 +18,26 @@ extern uint32_t randomMT();
 
 #define myrand() (double) (((unsigned long) randomMT()) / 4294967296.)
 
-static inline bool
-_bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
-  return a.weight > b.weight;
-}
 
 LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
-  Model(corpus, dict),
+  TopicModel(corpus, dict),
   _alpha(0.01), 
   _init_alpha(1.0),
   _estimate_alpha(1), //TODO 1 or 0
   _var_max_iter(20),
   _var_converged(1e-6),
   _em_max_iter(100),
-  _em_converged(1e-6),
+  _em_converged(1e-4),
   _max_alpha_iter(1000),
   _newton_threshold(1e-10),
   _ntopics(100),
-  _nterms(corpus->getNTerms())
+  _nterms(corpus->getNTerms()),
+  _log_prob_w(NULL),
+  _var_gamma(NULL),
+  _phi(NULL)
 {
   assert (corpus);
-
+  assert (corpus->size() > 0);
   _init_prob();
 }
 
@@ -54,10 +53,33 @@ LDAModel::_init_prob(){
     } 
   }
 
+  // allocate variational parameters
+  _var_gamma = (double **) malloc(sizeof(double*) * (_corpus->size()));
+  for (int i = 0; i < _corpus->size(); i++)
+    _var_gamma[i] = (double *) malloc(sizeof(double) * _ntopics);
+
+  int max_length = _corpus->maxDocLen();
+  _phi = (double **) malloc( sizeof(double*) * max_length);
+  for (int i = 0; i < max_length; i++)
+    _phi[i] = (double *) malloc(sizeof(double) * _ntopics);
 }
 
 
 LDAModel::~LDAModel(){
+
+  if (_var_gamma) {
+    for (int i = 0; i < _corpus->size(); i++) free (_var_gamma[i]);
+    free (_var_gamma);
+  }
+
+  if (_phi) {
+    for (int i = 0; i < _corpus->maxDocLen(); i++) free (_phi[i]);
+    free (_phi);
+  }
+
+
+
+
   if (_log_prob_w){ 
     for (int i = 0; i < _ntopics; i++) {
       free (_log_prob_w[i]);
@@ -67,6 +89,27 @@ LDAModel::~LDAModel(){
 }
 
 
+int
+LDAModel::_cluster(){
+  _topics.resize(_ntopics);
+
+  SM_LOG_DEBUG ("begin cluster docs %zu", _topics.size());
+
+  for (int i = 0; i < _corpus->size(); i++) {
+    bow_t ret;
+    getMostLikelyTopicOfDoc (&ret, i, 0, 1);
+    if (ret.size() != 0) {
+      SM_LOG_DEBUG ("doc [%d] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
+      assert (ret[0].id >= 0 && ret[0].id < _ntopics);
+      _topics[ret[0].id].push_back (i);
+    } else {
+      SM_LOG_WARNING ("wtf");
+    }
+  }
+
+  return 0;
+}
+
 int 
 LDAModel::train(){
   // initialize model
@@ -75,6 +118,7 @@ LDAModel::train(){
   _alpha = _init_alpha;
 
   _em (ss);
+
   return 0;
 }
 
@@ -83,19 +127,7 @@ void
 LDAModel::_em(LDAState *ss){
   size_t d, n, max_length;
   int i;
-  double **var_gamma, **phi;
   double likelihood, likelihood_old = 0, converged = 1;
-
-  // allocate variational parameters
-  var_gamma = (double **) malloc(sizeof(double*)*(_corpus->size()));
-  for (d = 0; d < _corpus->size(); d++)
-    var_gamma[d] = (double *) malloc(sizeof(double) * _ntopics);
-
-  max_length = _corpus->maxDocLen();
-  phi = (double **) malloc( sizeof(double*) * max_length);
-  for (n = 0; n < max_length; n++)
-    phi[n] = (double *) malloc(sizeof(double) * _ntopics);
-
 
   // run expectation maximization
   i = 0; 
@@ -110,8 +142,8 @@ LDAModel::_em(LDAState *ss){
     // e-step
     for (d = 0; d < _corpus->size(); d++) {
       likelihood += _e_step(_corpus->at(d),
-                            var_gamma[d],
-                            phi,
+                            _var_gamma[d],
+                            _phi,
                             ss);
     }
 
@@ -124,29 +156,13 @@ LDAModel::_em(LDAState *ss){
     likelihood_old = likelihood;
   }
 
-#ifdef DEBUG
-  //output final visual 
-  FILE *fp = fopen("ws.txt", "w+");
-  for (d = 0; d < _corpus->size(); d++) {
-    const bow_t& doc = _corpus->at(d);
-    likelihood += _infer (_corpus->at(d), var_gamma[d], phi);
-    fprintf (fp, "%03zu", doc.size());
-    for (n = 0; n < doc.size(); n++){
-      fprintf (fp, " %04d:%02d", doc[n].id, argmax(phi[n], _ntopics));
-    }
-    fprintf (fp, "\n");
-    fflush(fp);
-  }
-#endif
-
-  for (i = 0; i < _corpus->size(); i++) free (var_gamma[i]);
-  free (var_gamma);
-  for (i = 0; i < max_length; i++) free (phi[i]);
-  free (phi);
-
 }
 
-int LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
+
+int 
+LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
+  assert (0); //TODO, implement this
+  assert (ret->size() == 0);
   double *var_gamma[1], likelihood, **phi;
 
   var_gamma[0] =  (double *)malloc (sizeof (double) * _ntopics);
@@ -158,6 +174,8 @@ int LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
 
   return 0;
 }
+
+
 int LDAModel::inference (const Corpus& corpus, Corpus *ret, bool normalized) {
   return 0;
 }
@@ -195,8 +213,25 @@ int LDAModel::save (const std::string &path, const std::string &basename) {
     fprintf (fp, "\n");
   }
   fclose(fp);
+
+  snprintf (filename, PATH_MAX, "%s/%s.gamma", path.c_str(), basename.c_str());
+  fp = fopen(filename, "w");
+  if (!fp) {
+    SM_LOG_WARNING ("opening gamma file [%s] for writting error", filename);
+    goto error;
+  }
   
+  for (int i = 0; i < _corpus->size(); i++){
+    fprintf (fp, "%5.10f", _var_gamma[i][0]);
+    for (int j = 1; j < _ntopics; j++) { 
+      fprintf (fp, " %5.10f", _var_gamma[i][j]);
+    }
+    fprintf (fp, "\n");
+  }
+
+  fclose(fp);
   return 0;
+
  error:
   if (fp) fclose(fp);
   return -1;
@@ -224,7 +259,11 @@ int LDAModel::load (const std::string &path, const std::string &basename) {
   SM_LOG_DEBUG ("opening meta file %s success", filename);
   fclose(fp);
 
-  assert (nterms == _nterms);
+  //assert (nterms == _nterms);
+  if (_dict && nterms != _dict->size()) {
+    SM_LOG_NOTICE ("hehe");
+  }
+
   _init_prob();
 
   snprintf (filename, PATH_MAX, "%s/%s.beta", path.c_str(), basename.c_str());
@@ -247,8 +286,29 @@ int LDAModel::load (const std::string &path, const std::string &basename) {
     }
   }
 
+  snprintf (filename, PATH_MAX, "%s/%s.gamma", path.c_str(), basename.c_str());
+  fp = fopen(filename, "r");
+  if (!fp) {
+    SM_LOG_WARNING ("open gamma file %s error", filename);
+    goto error;
+  }
+
+  for (int i = 0; i < _corpus->size(); i++) {
+    for (int j = 0; j < _ntopics; j++) {
+      float x;
+      if ( 1 != fscanf (fp, "%f", &x)){
+        SM_LOG_WARNING ("gamma file format error");
+        goto error;
+      }
+      
+      _var_gamma[i][j] = x;
+    }
+    fscanf (fp, "\n");
+  }
+
   fclose(fp);
-  return 0;
+  
+  return _cluster();
  error:
   if (fp) {
     fclose(fp);
@@ -263,22 +323,49 @@ int LDAModel::load (const std::string &path, const std::string &basename) {
   return -1;
 }
 
+
+int
+LDAModel::getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold, int max_result) {
+  assert (ret && ret->size() == 0);
+  assert (docid < _corpus->size());
+
+  for (int i = 0; i < _ntopics; i++) {
+    bow_unit_t u;
+    u.id = i;
+    u.weight = _var_gamma[docid][i];
+    if (u.weight < threshold)
+      continue;
+
+    ret->push_topk (u, max_result);
+  }
+
+  ret->sort();
+  return 0;
+}
+
+
+int
+LDAModel::getDocsOfTopic (vector<int> *tmp, int topicid) {
+  assert (topicid <= _ntopics);
+
+  *tmp =  _topics[topicid-1];
+  return 0;
+
+}
+
+
 void
 LDAModel::getHotestWords (bow_t *bow, int topicid, int nwords) {
   assert (topicid >=1 && topicid <= _ntopics);
+  assert (bow->size() == 0);
+
   bow_unit_t tmp;
   int i;
-  bow->clear();
 
   for (i = 0; i < _nterms; i++) {
     tmp.id = i;
     tmp.weight = _log_prob_w[topicid-1][i];
-    bow->push_back(tmp);
-    push_heap (bow->v.begin(), bow->v.end(), _bow_cmp);
-    if (bow->size() > nwords) {
-      pop_heap (bow->v.begin(), bow->v.end(), _bow_cmp);
-      bow->v.pop_back();
-    }
+    bow->push_topk (tmp, nwords);
   }
   bow->sort();
 
@@ -286,10 +373,10 @@ LDAModel::getHotestWords (bow_t *bow, int topicid, int nwords) {
 
 void
 LDAModel::getHotestWordsDesc(string *desc, int topicid, int nwords, const std::string& encoding){
+  assert (desc->size() == 0);
   bow_t bow;
   getHotestWords(&bow, topicid, nwords);
   
-  string buffer;
   stringstream ss;
   rwtrans_func_t *w = get_rwtrans(encoding);
   assert(w);
@@ -297,8 +384,9 @@ LDAModel::getHotestWordsDesc(string *desc, int topicid, int nwords, const std::s
   ss << "Topic [" << topicid-1 << "]: ";
 
   for (size_t i = 0; i < bow.size(); i++) {
-    buffer.clear();
+    string buffer;
     if (_dict) {
+      assert (bow[i].id < _dict->size());
       const wstring &d = _dict->at(bow[i].id);
       assert (0 == w (d, &buffer) );
       ss << buffer;
@@ -381,6 +469,7 @@ LDAModel::_infer(const bow_t& doc, double* var_gamma, double** phi) {
 
     // compute posterior dirichlet
     for (k = 0; k < _ntopics; k++) {
+      assert (doc.total() != NAN);
       var_gamma[k] = _alpha + (doc.total()/((double) _ntopics));
       digamma_gam[k] = digamma(var_gamma[k]);
       for (n = 0; n < doc.size(); n++)
@@ -554,7 +643,3 @@ LDAState::zero() {
   ndocs = 0;
   alpha_suffstats = 0;
 }
-
-
-
-

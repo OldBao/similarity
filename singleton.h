@@ -1,7 +1,7 @@
 #ifndef SINGLETON_H_
 #define SINGLETON_H_
 
-#include "lock.h"
+#include "concurrent.h"
 
 #define SM_DECLARE_SINGLETON(clz, para)           \
   private:                                        \

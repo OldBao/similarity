@@ -7,6 +7,8 @@ using namespace std;
 namespace sm {
 TEST_F (LDATestCase, TestTopkHotwords) {
   Corpus corpus;
+  corpus.getBows().resize(100);
+
   LDAModel model(&corpus, NULL);
   model._ntopics = 1;
   model._nterms = 10000;

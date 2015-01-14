@@ -52,8 +52,8 @@ TEST_F (DictionaryTestCase, TestTwoDifferenctToken){
 
 TEST_F(DictionaryTestCase, TestSave) {
   Dictionary dict;
-  Document doc1(GBK_SHORT_LINE, "", "GBK");
-  Document doc2(GBK_SHORT_LINE2, "", "GBK");
+  Document doc1(GBK_SHORT_LINE, "", "", "GBK");
+  Document doc2(GBK_SHORT_LINE2, "", "", "GBK");
   int id;
   string word;
   string encoding;

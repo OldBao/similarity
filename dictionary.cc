@@ -10,16 +10,6 @@ static const int DICT_MAX_WORD_LEN = 1024;
 #define ESCAPE  ' '
 
 
-static inline bool
-_bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
-  return a.weight > b.weight;
-}
-
-void
-bow_t::sort(){
-  std::sort(v.begin(), v.end(), _bow_cmp);
-}
-
 char *
 myfgets(char *buf, size_t len, FILE *fp) {
   char *f;
@@ -29,102 +19,6 @@ myfgets(char *buf, size_t len, FILE *fp) {
   if ((f = strchr(buf, '\n')) != NULL) *f = '\0';
   return f;
 }
-
-
-double
-bow_t::total() const{
-  double ret = 0.0;
-
-  for (vector<bow_unit_t>::const_iterator iter = v.begin();
-       iter != v.end();
-       iter++)
-    {
-      ret += iter->weight;
-    }
-
-  return ret;
-}
-
-void
-bow_t::resize(size_t s) {
-  v.resize(s);
-}
-
-void
-bow_t::clear() {
-  v.clear();
-}
-
-void 
-bow_t::reserve(size_t s) { 
-  v.reserve(s); 
-}
-
-void
-bow_t::push_back(const bow_unit_t &u){
-  vector<bow_unit_t>::iterator iter;
-  for (iter = v.begin();
-       iter != v.end();
-       iter++) {
-    if (iter->id > u.id) {
-      break;
-    }
-  }
-
-  v.insert(iter, u);
-}
-
-void
-bow_t::unitvec(){
-  double n = norm();
-
-  for (vector<bow_unit_t>::iterator iter = v.begin();
-       iter != v.end();
-       iter++){
-    iter->weight *= 1.0 / n;
-  }
-}
-
-
-double
-bow_t::norm () const{
-  double tmp = 0.0;
-  for (vector<bow_unit_t>::const_iterator iter = v.begin();
-       iter != v.end();
-       iter++)
-    {
-      tmp += iter->weight * iter->weight;
-    }
-  return sqrt (tmp);
-}
-
-
-double 
-bow_t::cossim(const bow_t &other) const {
-  if (size() == 0 || other.size() == 0) return 0.0;
-  double mynorm = norm(), othernorm = other.norm();
-  double sim = 0.0;
-  
-  size_t i, j;
-  i = j = 0;
-  while (i < size() && j < other.size()) {
-    const bow_unit_t &u1 = v[i];
-    const bow_unit_t &u2 = other.v[j];
-      
-    if (u1.id > u2.id) {
-      j++;
-    } else if (u1.id < u2.id){
-      i++;
-    } else {
-      sim += u1.weight * u2.weight;
-      i++;
-      j++;
-    }
-  }
-
-  return sim / (mynorm * othernorm);
-}
-
 
 Dictionary::Dictionary () :
    _nPos(0), _nnz(0)
@@ -161,6 +55,7 @@ Dictionary::addDocuments(const vector<Document> &documents){
 
 int
 Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
+  assert (!bow || bow->size() == 0);
 
   int id = -1;
   map <int, int> frequencies;
@@ -267,7 +162,6 @@ Dictionary::save(const std::string& path, const std::string &basename, const std
   FILE *fp = NULL;
   int ret;
   rwtrans_func_t *w;
-  string buffer;
 
   snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), basename.c_str());
   fp = fopen(filename, "w");
@@ -301,7 +195,7 @@ Dictionary::save(const std::string& path, const std::string &basename, const std
   assert (w);
   for (size_t i = 0; i < _words.size(); i++)
     {
-      buffer.clear();
+      string buffer;
       w(_words[i], &buffer);
       ret = fprintf (fp, "%d%c%s\n", _dfs[i], ESCAPE, buffer.c_str());
       if (-1 == ret) {
@@ -326,7 +220,6 @@ Dictionary::load (const std::string &path, const std::string &base) {
   map<int, int> frequencies;
   FILE *fp;
   wtrans_func_t *w;
-  wstring buffer;
 
   snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), base.c_str());
   fp = fopen(filename, "r");
@@ -365,6 +258,7 @@ Dictionary::load (const std::string &path, const std::string &base) {
   }
 
   while (1) {
+    wstring buffer;
     if (id > wordcount) break;
     memset (word, 0, sizeof word);
     if (myfgets (word, MAX_WORD_LEN, fp) == NULL ){
@@ -376,10 +270,12 @@ Dictionary::load (const std::string &path, const std::string &base) {
       goto error;
     }
     *sep = '\0';
+
     if (1 != sscanf (word, "%d", &dfs)){
       SM_LOG_WARNING("dict format error in line %d", line);
       goto error;
     }
+
     w(sep+1, &buffer);
     line++;
     
@@ -388,8 +284,6 @@ Dictionary::load (const std::string &path, const std::string &base) {
     _dfs[id] = dfs;
     id++;
   }
-
-  SM_LOG_NOTICE ("loaded dictionary %zu dict", _words.size());
 
   fclose(fp);
   return 0;

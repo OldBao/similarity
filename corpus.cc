@@ -8,10 +8,12 @@ using namespace sm;
 static int getMaxIdFromBow (const bow_t & bow);
 
 Corpus::Corpus(Dictionary *dict) : _dict(dict), _nterms(0), _mdl(0){
+
 }
 
+
 int
-Corpus::addDoc(const bow_t &bow) {
+Corpus::addDoc( const bow_t &bow ) {
   _docs.push_back(bow);
   if (bow.size() > _mdl) {
     _mdl = bow.size();
@@ -23,23 +25,12 @@ Corpus::addDoc(const bow_t &bow) {
   }
 
   _update();
-  return 0;
+  return _docs.size()-1;
 }
+
 
 Corpus::~Corpus(){
 
-}
-
-int
-Corpus::addDocs (const vector<bow_t> &bows) {
-  _docs.insert (_docs.end(), bows.begin(), bows.end());
-  for (vector<bow_t>::const_iterator iter = bows.begin(); iter != bows.end(); iter++) {
-    if (iter->size() > _mdl) _mdl = iter->size();
-  }
-  
-
-  _update();
-  return 0;
 }
 
 size_t
@@ -68,6 +59,19 @@ Corpus::_update(){
 }
 
 int
+Corpus::truncate (int num_features) {
+  for (int i = 0; i < _docs.size(); i++) {
+    if (_docs[i].size() > num_features) {
+      _docs[i].resize(num_features);
+      _docs[i].pre_handle();
+    }
+  }
+
+  return 0;
+}
+
+
+int
 Corpus::save(const std::string& path, const std::string &basename){
   char filename[PATH_MAX];
   FILE *fp = NULL;
@@ -84,7 +88,7 @@ Corpus::save(const std::string& path, const std::string &basename){
   for (size_t i = 0; i < _docs.size(); i++) {
     const bow_t& b = _docs[i];
     if (b.size() == 0) continue;
-    ret = fprintf (fp, "%zu ", b.size());
+    ret = fprintf (fp, "%zu:%.10lf:%.10lf ", b.size(), b.total(), b.norm());
     
     if (ret < 0){
       SM_LOG_WARNING ("write corpus file error");
@@ -92,7 +96,7 @@ Corpus::save(const std::string& path, const std::string &basename){
     }
 
     for (size_t j = 0; j < b.size(); j++) {
-      ret = fprintf (fp, "%d:%.10lf ", b.v[j].id, b.v[j].weight);
+      ret = fprintf (fp, "%d:%.10lf ", b[j].id, b[j].weight);
       if (ret < 0) {
         SM_LOG_WARNING ("write corpus file error");
         goto error;
@@ -121,6 +125,7 @@ Corpus::load(const std::string &path, const std::string &basename){
   double weight;
   bow_t bow;
   bow_unit_t u;
+  double total, norm;
 
   
   snprintf (filename, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
@@ -132,10 +137,10 @@ Corpus::load(const std::string &path, const std::string &basename){
 
   line = 0;
   while (1) {
-    ret = fscanf (fp, "%10d", &length);
+    ret = fscanf (fp, "%d:%lf:%lf", &length, &total, &norm);
     line++;
     if (ret == EOF) break;
-    else if (ret != 1) {
+    else if (ret != 3) {
       SM_LOG_WARNING ("file [%s] format error", filename);
       goto error;
     }
@@ -143,6 +148,8 @@ Corpus::load(const std::string &path, const std::string &basename){
     if (length == 0) continue;
 
     bow.clear();
+    bow.setTotal(total);
+    bow.setNorm(norm);
     for (int n = 0; n < length; n++) {
       ret = fscanf (fp, "%d:%lf", &id, &weight);
       if (ret != 2) {
@@ -173,7 +180,7 @@ Corpus::load(const std::string &path, const std::string &basename){
 static int getMaxIdFromBow (const bow_t & bow) {
   int max = -1;
   for (size_t i = 0; i < bow.size(); i++) {
-    const bow_unit_t& u = bow.v[i];
+    const bow_unit_t& u = bow[i];
       if (u.id > max) max = u.id;
     }
 

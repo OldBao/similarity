@@ -74,6 +74,7 @@ Segment::segment(vector<Token> *ret_tokens, const string &line,
                  uint64_t mask,
                  const std::string& encoding)
 {
+  assert (ret_tokens->size() == 0);
   scw_out_t *out = NULL;
   int ret;
   token_t tokens [MAX_TOKENS];

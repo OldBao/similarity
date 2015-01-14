@@ -6,39 +6,9 @@
 #include <vector>
 #include <list>
 #include "document.h"
+#include "bow.h"
 
 namespace sm {
-  typedef struct bow_unit_s bow_unit_t;
-  typedef struct bow_s bow_t;
-
-
-  struct bow_unit_s {
-    int id;
-    double weight;
-  };
-
-  class bow_s {
-  public:
-    void push_back(const bow_unit_t &u);
-
-    //this function is for convenient
-    size_t size() const {return v.size(); }
-    const bow_unit_t &operator[](size_t i) const { return v[i]; }
-    const bow_unit_t &at(size_t i) const { return v[i]; }
-    void reserve(size_t size);
-    void resize(size_t size);
-    void clear();
-
-    double total () const;
-    double cossim (const bow_t & other) const;
-    double norm () const;
-    void unitvec();
-    void sort();
-
-    std::vector<bow_unit_t> v;
-  };
-
-
   class Dictionary {
   public:
     Dictionary ();

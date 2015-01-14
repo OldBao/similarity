@@ -16,8 +16,8 @@ namespace sm {
       return _desc;
     }
     
+    int truncate(int num_features = 12);
     int addDoc(const bow_t& bow);
-    int addDocs (const std::vector<bow_t>& bows);
     
     size_t size() const;
     size_t maxDocLen() const {return _mdl;}
@@ -34,5 +34,6 @@ namespace sm {
     int _nterms;
     size_t _mdl;
   };
+
 };
 #endif

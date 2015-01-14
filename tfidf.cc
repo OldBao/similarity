@@ -67,14 +67,14 @@ TFIDFModel::train (){
 
 int
 TFIDFModel::inference (const Corpus  &corpus, Corpus *dest, bool normalize) {
-  bow_t ret;
-
   for (size_t i = 0; i < corpus.size(); i++) {
+    bow_t ret;
     if (0 == i % 1000) {
         SM_LOG_DEBUG ("computed %d", i);
     }
     assert ( 0 == inference (corpus[i], &ret, normalize) );
-    assert ( 0 == dest->addDoc (ret)) ;
+    ret.pre_handle();
+    assert ( dest->addDoc (ret) >= 0) ;
   }
 
   return 0;
@@ -83,7 +83,8 @@ TFIDFModel::inference (const Corpus  &corpus, Corpus *dest, bool normalize) {
 
 int
 TFIDFModel::inference (const bow_t &src, bow_t *dest, bool normalize) {
-  dest->clear();
+  assert (dest->size() == 0);
+
   dest->reserve (src.size());
 
   for (size_t i = 0; i < src.size(); i++) {
@@ -98,7 +99,9 @@ TFIDFModel::inference (const bow_t &src, bow_t *dest, bool normalize) {
       //precesion threshold
       dest->push_back(tmpu);
     }
-    }
+    dest->pre_handle();
+  }
+  
 
   if (normalize) {
     dest->unitvec();
