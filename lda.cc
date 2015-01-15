@@ -368,7 +368,6 @@ LDAModel::getHotestWords (bow_t *bow, int topicid, int nwords) {
     bow->push_topk (tmp, nwords);
   }
   bow->sort();
-
 }
 
 void

@@ -5,22 +5,23 @@
 #include <string>
 
 #include <sys/types.h>
-#include <dirent.h>
+#include <map>
 #include "concurrent.h"
-#include "mco/MolaEngine.h"
+#include "kvproxy_client.h"
 
 namespace sm {
   class Repository;
   typedef int (ItemCallback)(const std::string &item, const std::string& content, void *context);
 
-  class RepositoryWorker : public Thread< std::vector<baidu::mco::Slice>* > {
+  class RepositoryWorker : public Thread<std::string> {
   public:
     RepositoryWorker(Repository *repo);
     virtual ~RepositoryWorker();
-    virtual int doJob(std::vector<baidu::mco::Slice>* const &job);
+    virtual int doJob(const std::string &job);
 
   private:
     Repository* _repo;
+    KvProxyClient client;
   };
 
   class Repository {
@@ -37,15 +38,13 @@ namespace sm {
     int addUrls (const std::vector<std::string> &urls);
     int registerItemHandler(ItemCallback);
     int size();
-    int doJob(const std::vector<baidu::mco::Slice> &docs);
+    int doJob(const std::string &doc);
     
     void waitAllJobDone();
    private:
     std::string _localpath, _mola_path, _mola_file;
     uint64_t _sign_doc(const std::string &doc);
     std::map<int64_t, std::string> _docmap;
-    DIR *_dir;
-    baidu::mco::MolaEngine _engine;
 
     std::vector<RepositoryWorker *> _workers;
   };

@@ -8,12 +8,17 @@ using namespace sm;
 
 
 static inline bool
-__ge (const bow_unit_t&a, const bow_unit_t &b) {
+__gt (const bow_unit_t&a, const bow_unit_t &b) {
   return a.weight > b.weight;
 }
 
+static inline bool
+__lt (const bow_unit_t&a, const bow_unit_t &b) {
+  return a.weight < b.weight;
+}
 
-bow_t::bow_t() {
+
+bow_t::bow_t() : _total(NAN), _norm(NAN), _pre_handled(false){
 
 }
 
@@ -24,7 +29,7 @@ bow_t::size() const{
 
 void
 bow_t::sort(){
-  std::sort(_v.begin(), _v.end(), __ge);
+  std::sort(_v.begin(), _v.end(), __gt);
 }
 
 
@@ -46,6 +51,7 @@ bow_t::_cal_total(){
 
 double
 bow_t::total() const {
+  SM_ASSERT(_pre_handled, "please call pre_handle function ;-)");
   SM_CHECK_RET (NAN, _total != NAN, "total is nan");
   return _total;
 }
@@ -81,18 +87,19 @@ bow_t::pre_handle() {
   sort();
   _cal_total();
   _cal_norm();
+  _pre_handled = true;
 }
 
 
 void
 bow_t::push_topk (const bow_unit_t &u, int k) {
-  if (size() <= k) {
+  if (size() < k) {
     _v.push_back(u);
-    push_heap (_v.begin(), _v.end(), __ge);
+    push_heap ( _v.begin(), _v.end(), __gt);
   } else {
-    if ( __ge( _v[0], u ) ) {
+    if ( __gt( u, _v[0]) ) {
       _v[0] = u;
-      make_heap (_v.begin(), _v.end(), __ge);
+      make_heap (_v.begin(), _v.end(), __gt);
     }
   }
 }
@@ -117,6 +124,7 @@ bow_t::unitvec(){
 
 double
 bow_t::norm() const {
+  SM_ASSERT(_pre_handled, "please call pre_handle function ;-)");
   SM_CHECK_RET (NAN, _norm != NAN, "norm is NAN");
   return _norm;
 }
@@ -137,25 +145,19 @@ bow_t::_cal_norm (){
 
 
 double 
-bow_t::cossim(const bow_t &other, int num_features) const {
+bow_t::cossim(const bow_t &other) const {
   if (size() == 0 || other.size() == 0) return 0.0;
   double mynorm = norm(), othernorm = other.norm();
   double sim = 0.0;
   
-  size_t i, j;
-  i = j = 0;
-  while (i < size() && j < other.size()) {
-    const bow_unit_t &u1 = _v[i];
-    const bow_unit_t &u2 = other._v[j];
-      
-    if (u1.id > u2.id) {
-      j++;
-    } else if (u1.id < u2.id){
-      i++;
-    } else {
-      sim += u1.weight * u2.weight;
-      i++;
-      j++;
+  for (int i = 0; i < size(); i++) {
+    const bow_unit_t& u = _v[i];
+
+    for (int j = 0; j < other.size(); j++) {
+      if (other[j].id == u.id) {
+        sim += u.weight * other[j].weight;
+        break;
+      }
     }
   }
 

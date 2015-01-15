@@ -25,10 +25,11 @@ namespace sm {
     void resize(size_t size);
     void clear();
     void pre_handle();
+    void setPreHandled(bool t) {_pre_handled = true;}
 
     void setTotal(double total) { _total = total;}
     double total () const;
-    double cossim ( const bow_t & other, int num_feature=12) const;
+    double cossim ( const bow_t & other) const;
     void setNorm(double norm){_norm = norm;}
     double norm () const;
     void unitvec();
@@ -40,6 +41,8 @@ namespace sm {
 
     std::vector<bow_unit_t> _v;
     double _norm, _total;
+
+    bool _pre_handled;
   };
 
 

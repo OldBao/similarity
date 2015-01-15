@@ -54,7 +54,7 @@ static int encoding_iconv (const string& from, string *to, const char * fromenco
 int 
 sm::encoding_utf8_to_gbk (const std::string &utf, std::string *gbk) 
 {
-  SM_CHECK_RET_ERR (!gbk || gbk->size() == 0, "WTF");
+  SM_CHECK_RET_ERR (gbk && gbk->size() == 0, "ret string should be empty");
   
   return encoding_iconv (utf, gbk, UTF8, GBK);
 }
@@ -62,10 +62,7 @@ sm::encoding_utf8_to_gbk (const std::string &utf, std::string *gbk)
 
 int 
 sm::encoding_gbk_to_utf8 (const std::string &gbk, std::string *utf) {
-  if (!utf) {
-    return -1;
-  }
-  SM_CHECK_RET_ERR (utf->size() == 0, "can't encoding empty string");
+  SM_CHECK_RET_ERR (utf && utf->size() == 0, "ret string should be empty");
 
   return encoding_iconv (gbk, utf, GBK, UTF8);
 }
@@ -73,7 +70,7 @@ sm::encoding_gbk_to_utf8 (const std::string &gbk, std::string *utf) {
 
 int
 sm::encoding_wchar_to_utf8(const std::wstring &wide, std::string* utf8) {
-  SM_CHECK_RET_ERR (utf8->size() == 0, "NULL utf8 pointer, fuck you");
+  SM_CHECK_RET_ERR (utf8 && utf8->size() == 0, "ret string should be empty");
   std::string buffer;
   const char *p = reinterpret_cast<const char *>(wide.data());
   const char *q = p + sizeof (wchar_t) * wide.size();
@@ -90,7 +87,7 @@ sm::encoding_wchar_to_utf8(const std::wstring &wide, std::string* utf8) {
 
 int
 sm::encoding_wchar_to_gbk(const std::wstring &wide, std::string* gbk) {
-  SM_CHECK_RET_ERR (gbk->size() == 0, "NULL POINTER");
+  SM_CHECK_RET_ERR (gbk && gbk->size() == 0, "ret string should be empty");
   std::string buffer;
   const char *p = reinterpret_cast<const char *>(wide.data());
   const char *q = p + sizeof (wchar_t) * wide.size();
@@ -106,7 +103,7 @@ sm::encoding_wchar_to_gbk(const std::wstring &wide, std::string* gbk) {
 
 int
 sm::encoding_utf8_to_wchar(const std::string &utf, std::wstring* wide) {
-  SM_CHECK_RET_ERR (wide->size() == 0, "NULL POINTER~~");
+  SM_CHECK_RET_ERR (wide && wide->size() == 0, "ret string should be empty");
   std::string buffer;
 
   int ret =encoding_iconv(utf, &buffer, UTF8, WCHAR);
@@ -130,7 +127,7 @@ sm::encoding_utf8_to_wchar(const std::string &utf, std::wstring* wide) {
 
 int
 sm::encoding_gbk_to_wchar(const std::string &gbk, std::wstring* wide) {
-  SM_CHECK_RET_ERR (wide->size() == 0, "NULL POINTER!~!");
+  SM_CHECK_RET_ERR (wide && wide->size() == 0, "ret string should be empty");
   std::string buffer;
 
   int ret =encoding_iconv(gbk, &buffer, GBK, WCHAR);

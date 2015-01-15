@@ -13,10 +13,18 @@
 #define SM_LOG_TRACE(fmt, arg...) printf(fmt "\n", ##arg)
 
 #define __SM_CHECK(cond, fmt, arg...) {                                 \
-    if (!cond) {                                                        \
-      printf ("assert (" #cond ") fails : " fmt "\n", ##arg); \
+    if (!(cond)) {                                                      \
+      printf ("assert [" #cond "] fails : " fmt "\n", ##arg);           \
       abort();                                                          \
     }                                                                   \
+  }
+
+#define SM_CHECK_RET(ret, cond, fmt, arg...)  {                 \
+    if (!(cond)) {                                              \
+      printf ("assert [" #cond "] fails : " fmt "\n", ##arg);   \
+      abort();                                                  \
+      return ret;                                               \
+    }                                                           \
   }
 
 #endif
@@ -31,13 +39,11 @@
   }
 #endif
 
-#define SM_CHECK_RET(ret, cond, fmt, arg...)  {       \
-    __SM_CHECK(cond, fmt, ##arg);                     \
-    return ret;                                        \
-  }
+
 
 #define SM_CHECK_RET_ERR(cond, fmt, arg...) SM_CHECK_RET(-1, cond, fmt, ##arg)
 #define SM_CHECK_RET_OK(cond, fmt, arg...) SM_CHECK_RET(0, cond, fmt, ##arg)
 
-#define SM_CHECK __SM_CHECK
+#define SM_ASSERT __SM_CHECK
+
 #endif

@@ -44,7 +44,6 @@ namespace sm {
   public:
     work_priority_t priority;
     T job;
-    bool autoDelete;
     inline bool operator <(const _internal_Job &rhs) const {
       return priority < rhs.priority;
     }
@@ -60,7 +59,7 @@ namespace sm {
     void start ();
     void stop ();
     size_t size();
-    int addJob (T job, work_priority_t prior = WORK_NORMAL, bool autoDelete = false);
+    int addJob (T job, work_priority_t prior = WORK_NORMAL);
 
     virtual int doJob(const T& ) = 0;
 

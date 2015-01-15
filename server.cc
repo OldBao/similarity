@@ -1,12 +1,19 @@
+
 #include <iostream>
 #include <fstream>
+#include <signal.h>
 #include "repo.h"
-
+#include "segment.h"
 using namespace std;
 using namespace sm;
 
 int
 main(int argc, char **argv){
+  signal(SIGPIPE, SIG_IGN);
+  ul_logstat_t logstat;
+  logstat.events = 4;
+  logstat.spec= 0;
+  ul_openlog("./log", "junk", &logstat, 1024);
   if (argc != 2) {
     cout << "./server url" << endl;
     return 0;
@@ -23,7 +30,7 @@ main(int argc, char **argv){
 
   Repository repo("doccache", "conf/online", "mola.conf");
   if (0 != repo.open()){
-    cout << "open repo error" << endl;
+    cout << "open repo error " << endl;
     return -1;
   }
 
@@ -36,6 +43,6 @@ main(int argc, char **argv){
   }
 
   repo.addUrls(urls);
-
-  repo.waitAllJobDone();
+  while (1) { sleep (10);}
+  //repo.waitAllJobDone();
 }

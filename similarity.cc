@@ -7,16 +7,11 @@ using namespace sm;
 
 #define THREAD_COUNT 5
 
-static inline bool
-_bow_cmp (const bow_unit_t&a, const bow_unit_t &b) {
-  return a.weight > b.weight;
-}
-
 SimCalculator::SimCalculator(TopicSimilarity *sim) : _sim(sim){}
 SimCalculator::~SimCalculator() {}
 
 int SimCalculator::doJob (int64_t* const &id) {
-  _sim->doJob(*id);
+  _sim->doJob((int64_t)id);
 }
 
 TopicSimilarity::TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, int maxSim) : 
@@ -98,11 +93,10 @@ TopicSimilarity::_cal_within_topics(const vector<int> &topics) {
   }
 
   for (int i = 0; i < an; i++) {
-    _sims[ i ].sort();
-
     //TODO delete this
     stringstream tmp;
     tmp << "Sim of [ " << all[i]  << "]:  ";
+    _sims[ all[i] ].sort();
 
     for (int j = 0; j < _sims[ all[i] ].size(); j++) {
       tmp << "[" << _sims[all[i]][j].id << ":" << _sims[ all[i] ][j].weight << "]";
@@ -122,7 +116,11 @@ int
 TopicSimilarity::calculate(int64_t topicid){
   _sims.resize (_corpus->size());
   
-  this->_calculators[topicid%THREAD_COUNT]->addJob (&topicid, WORK_NORMAL, true);
+  // this is a little trick
+  // because i want implement "auto delete", but 'delete int' is invalid
+  // so i just send this scala as integer
+  // the best choice is use type_trait, but it's seems too complicated ;-(
+  this->_calculators[topicid%THREAD_COUNT]->addJob ((int64_t *) topicid);
   return 0;
 }
 

@@ -160,6 +160,7 @@ Corpus::load(const std::string &path, const std::string &basename){
       u.weight = weight;
       bow.push_back(u);
     }
+    bow.setPreHandled(true);
 
     assert(bow.size() == length);
 

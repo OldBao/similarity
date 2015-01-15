@@ -22,11 +22,10 @@ namespace sm {
   }
 
   template <typename T> int
-  Thread<T>::addJob(T job, work_priority_t prior, bool autoDelete) {
+  Thread<T>::addJob(T job, work_priority_t prior) {
     _internal_Job<T> _job ;
     _job.job = job;
     _job.priority = prior;
-    _job.autoDelete = autoDelete;
 
     _jobLock.Acquire();
     _jobQueue.push (_job);
@@ -62,6 +61,7 @@ namespace sm {
   template <typename T>
   void
   Thread<T>::stop(){
+    if (_stopped) return;
     if (!_stopping) {
       _cmdLock.Acquire();
       _stopping = true;
@@ -72,6 +72,8 @@ namespace sm {
       _jobLock.Release();
 
       pthread_join(_td, NULL);
+      _stopping = false;
+      _stopped = true;
     }
   }
 
@@ -90,6 +92,7 @@ namespace sm {
   void
   Thread<T>::thread_member(){
     int    total_time;
+    int done = 0, fail = 0;
 
     SM_LOG_DEBUG ("thread started");
     while (1) {
@@ -124,14 +127,13 @@ namespace sm {
 
       if (has_newjob) {
         //SM_LOG_TRACE ("thread %d doing job %lld", _id, j.jobid);
-        doJob (j.job);
-        if (j.autoDelete) {
-          delete j.job;
-        }
+        int ret = doJob (j.job);
+        if (ret != 0) fail++;
+        else done++;
       }
     }
 
-    SM_LOG_NOTICE ("thread statistics [JobDone : %d]");
+    SM_LOG_NOTICE ("thread statistics [JobDone : %d] [Failed: %d]", done, fail);
   }
 
 }

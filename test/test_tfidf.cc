@@ -20,6 +20,7 @@ TEST_F (TFIDFTestCase, TestNormal){
   add_w(&bow, 1, 1);
   add_w(&bow, 2, 1);
   add_w(&bow, 3, 1);
+
   corpus->addDoc (bow);
   
   bow.clear();
@@ -51,10 +52,10 @@ TEST_F (TFIDFTestCase, TestNormal){
   model->inference(bow, &ret);
   ASSERT_EQ (ret.size(), 2);
 
-  ASSERT_EQ (ret[0].id, 1);
-  ASSERT_DOUBLE_EQ (2.0 * log2(3.0/2), ret[0].weight);
+  ASSERT_EQ (ret[1].id, 1);
+  ASSERT_DOUBLE_EQ (2.0 * log2(3.0/2), ret[1].weight);
 
-  ASSERT_EQ (ret[1].id, 3);
-  ASSERT_DOUBLE_EQ (2.0 * log2(3.0/1), ret[1].weight);
+  ASSERT_EQ (ret[0].id, 3);
+  ASSERT_DOUBLE_EQ (2.0 * log2(3.0/1), ret[0].weight);
   
 }
