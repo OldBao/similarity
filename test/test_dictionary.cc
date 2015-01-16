@@ -13,7 +13,7 @@ using namespace sm;
 
 TEST_F(DictionaryTestCase, TestLineWithNewline) {
   string line = UTF8_SHORT_LINE_WITH_NEWLINE;
-  Document doc(line, "",  "", "utf8");
+  Document doc(line, "",  -1, "utf8");
 
   ASSERT_EQ(0, doc.analysis());
   ASSERT_EQ(1, doc.getTokens().size());
@@ -27,7 +27,7 @@ TEST_F(DictionaryTestCase, TestLineWithNewline) {
 TEST_F(DictionaryTestCase, TestDupToken) {
   Dictionary dict;
   string line = UTF8_SHORT_LINE;
-  Document doc(line, "", "", "utf8");
+  Document doc(line, "", -1, "utf8");
 
   ASSERT_EQ(0, doc.analysis());
   ASSERT_EQ(0, dict.addDocument(doc));
@@ -38,8 +38,8 @@ TEST_F(DictionaryTestCase, TestDupToken) {
 
 TEST_F (DictionaryTestCase, TestTwoDifferenctToken){
   Dictionary dict;
-  Document doc1(UTF8_SHORT_LINE, "", "utf8");
-  Document doc2(UTF8_SHORT_LINE2, "", "utf8");
+  Document doc1(UTF8_SHORT_LINE, "", -1, "utf8");
+  Document doc2(UTF8_SHORT_LINE2, "", -1, "utf8");
 
   ASSERT_EQ(0, doc1.analysis());
   ASSERT_EQ(0, doc2.analysis());
@@ -52,8 +52,8 @@ TEST_F (DictionaryTestCase, TestTwoDifferenctToken){
 
 TEST_F(DictionaryTestCase, TestSave) {
   Dictionary dict;
-  Document doc1(GBK_SHORT_LINE, "", "", "GBK");
-  Document doc2(GBK_SHORT_LINE2, "", "", "GBK");
+  Document doc1(GBK_SHORT_LINE, "", -1, "GBK");
+  Document doc2(GBK_SHORT_LINE2, "", -1, "GBK");
   int id;
   string word;
   string encoding;
@@ -110,8 +110,8 @@ TEST_F(DictionaryTestCase, TestSave) {
 
 TEST_F(DictionaryTestCase, TestLoad) {
   Dictionary dict, otherdict;
-  Document doc1(UTF8_SHORT_LINE, "", "utf8");
-  Document doc2(UTF8_SHORT_LINE2, "", "utf8");
+  Document doc1(UTF8_SHORT_LINE, "", -1, "utf8");
+  Document doc2(UTF8_SHORT_LINE2, "", -1, "utf8");
   string word;
 
   ASSERT_EQ(0, doc1.analysis());

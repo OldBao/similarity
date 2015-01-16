@@ -1,0 +1,13 @@
+//lda model 
+package smpb;
+
+message LDA {
+   required uint64 version = 1;
+   required int32 topics = 2;
+   required int32 terms = 3;
+   required int32 docs = 4;
+   required double alpha = 5;
+
+   repeated double beta = 6 [packed = true];
+   repeated double gamma = 7 [packed = true];
+};

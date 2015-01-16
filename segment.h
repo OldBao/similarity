@@ -17,7 +17,7 @@ namespace sm{
               const std::string &postag_path,
               const std::string &stopwords = "");
 
-    int segment (std::vector <Token>* tokens, const std::string &line, uint64_t mask = 0, const std::string &encoding = "gbk");
+    int segment (std::vector <Token>* tokens, const std::string &line, uint64_t mask = 0);
 
  private:
     bool _token_stopped(const Token &token);

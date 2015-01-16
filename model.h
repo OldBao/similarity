@@ -51,15 +51,14 @@ namespace sm {
     int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
     
     const std::vector<double> idf() {return _idf;}
-
-    virtual int save(const std::string &path, const std::string &basename) { return 0;}
-    virtual int load(const std::string &path, const std::string &basename) {return 0;}
+    virtual int save(const std::string& __attribute__((unused)), const std::string & __attribute__((unused))) {return 0;}
+    virtual int load(const std::string& __attribute__((unused)), const std::string & __attribute__((unused))) {return 0;}
   };
 
 
   class LDAState {
   public:
-    LDAState (const Corpus &corpus, int topics, int num_init = 1);
+    LDAState (const Corpus &corpus, int topics);
     virtual ~LDAState();
 
     void zero();
@@ -75,7 +74,7 @@ namespace sm {
 
   class LDAModel : public TopicModel {
   public:
-    LDAModel (Corpus *corpus, Dictionary *dict);
+    LDAModel (Corpus *corpus, Dictionary *dict, int version = 0);
     virtual ~LDAModel ();
     
     int train();
@@ -109,7 +108,7 @@ namespace sm {
     float _em_converged;
     int _max_alpha_iter;
     double _newton_threshold;
-    int _ntopics, _nterms;
+    int _ntopics, _nterms, _ndocs, _version;
     double **_log_prob_w;
     double **_var_gamma;
     double **_phi;

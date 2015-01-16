@@ -1,6 +1,30 @@
 #include "concurrent.h"
 using namespace sm;
 
+RWLock::RWLock(){
+  pthread_rwlock_init (&_lock, NULL);
+}
+
+RWLock::~RWLock(){
+  pthread_rwlock_destroy (&_lock);
+}
+
+void
+RWLock::AcquireRead (){
+  pthread_rwlock_rdlock (&_lock);
+}
+
+void
+RWLock::AcquireWrite (){
+  pthread_rwlock_wrlock (&_lock);
+}
+
+void
+RWLock::Release(){
+  pthread_rwlock_unlock(&_lock);
+}
+
+
 Lock::Lock (){
   pthread_mutex_init (&_lock, NULL);
 }

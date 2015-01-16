@@ -1,27 +1,17 @@
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/gzip_stream.h>
+#include <fstream>
 #include <algorithm>
 #include "log.h"
 #include "dictionary.h"
 #include "encoding.h"
+#include "interface/dict.pb.h"
 
 using namespace sm;
 using namespace std;
 
-static const int DICT_MAX_WORD_LEN = 1024;
-#define ESCAPE  ' '
-
-
-char *
-myfgets(char *buf, size_t len, FILE *fp) {
-  char *f;
-  f = fgets(buf, len, fp);
-  if (!f) return f;
-
-  if ((f = strchr(buf, '\n')) != NULL) *f = '\0';
-  return f;
-}
-
-Dictionary::Dictionary () :
-   _nPos(0), _nnz(0)
+Dictionary::Dictionary (uint64_t version) :
+  _nPos(0), _nnz(0), _version(version)
 {
 
 }
@@ -54,6 +44,45 @@ Dictionary::addDocuments(const vector<Document> &documents){
 
 
 int
+Dictionary::addRawDoc (bow_t *bow, const vector< pair<string, double> >&doc) {
+  assert (bow);
+
+  for (vector< pair<string, double> >::const_iterator iter = doc.begin();
+       iter != doc.end();
+       iter++) 
+    {
+      std::wstring wcontent;
+      int id = -1;
+      map<wstring, int>::iterator tmp_iter;
+      encoding_utf8_to_wchar (iter->first, &wcontent);
+
+      _wordmapLock.AcquireRead();
+      if ((tmp_iter = _wordmap.find(wcontent)) != _wordmap.end()) {
+        id = tmp_iter->second;
+      } 
+      _wordmapLock.Release();
+      
+      if (id == -1) {
+        _wordsLock.AcquireWrite();
+        id = _words.size();
+        _words.push_back (wcontent);
+        _wordsLock.Release();
+        _wordmapLock.AcquireWrite();
+        _wordmap[wcontent] = id;
+        _wordmapLock.Release();
+      }
+
+      bow_unit_t unit;
+      unit.id = id;
+      unit.weight = iter->second;
+      bow->push_back(unit);
+    }
+
+  return 0;
+}
+
+
+int
 Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
   assert (!bow || bow->size() == 0);
 
@@ -70,14 +99,23 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
         continue;
       }
 
+      _wordmapLock.AcquireRead();
       if (_wordmap.find(iter->content) != _wordmap.end()) {
         id = _wordmap[iter->content];
+        _wordmapLock.Release();
       } else {
         if (update) {
+          _wordsLock.AcquireWrite();
           id = _words.size();
           _words.push_back (iter->content);
+          _dfs.resize(_words.size());
+          _wordsLock.Release();
+          
+          _wordmapLock.Release();
+          _wordmapLock.AcquireWrite();
           _wordmap[iter->content] = id;
         }
+        _wordmapLock.Release();
       }
       
       new_pos++;
@@ -92,17 +130,17 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
     }
   }
 
-    
-  if (update)
-    _dfs.resize (_words.size());
+
 
   /// update document frequence stat and bow
   for (map<int, int>::iterator iter = frequencies.begin();
        iter != frequencies.end();
        iter++)
     {
-      if (update) {
+      if (update) {  
+        _wordsLock.AcquireWrite();
         _dfs[iter->first]++;
+        _wordsLock.Release();
       }
 
       if (bow) {
@@ -114,23 +152,13 @@ Dictionary::doc2bow (bow_t *bow, const Document& document, bool update) {
     }
 
   if (update) {
+    _nnzLock.Acquire();
     _nPos += new_pos;
     _nnz += frequencies.size();
-    
-    _update();
-    SM_LOG_DEBUG ("ADD [%zu] new tokens to dict, current [%s]", frequencies.size(),
-                  toString().c_str());
+    _nnzLock.Release();
   }
 
   return 0;
-}
-
-
-void
-Dictionary::_update() {
-  char buffer[4096];
-  snprintf (buffer, 4096, "Dictionary (%zu unique tokens)", _words.size());
-  _desc.assign(buffer);
 }
 
 
@@ -145,150 +173,107 @@ Dictionary::at(size_t id, const std::string &encoding) const {
   string buffer;
 
   rwtrans_func_t *w = get_rwtrans(encoding);
+
+  Dictionary *d = const_cast<Dictionary *>(this);
+  d->_wordsLock.AcquireRead();
   w(_words[id], &buffer);
+  d->_wordsLock.Release();
+
   return buffer;
 }
 
+
 const std::wstring & 
 Dictionary::at(size_t id) const {
-  //assert (id <= _words.size() && id > 0);
+  Dictionary *d = const_cast<Dictionary *>(this);
+  d->_wordsLock.AcquireRead();
   return _words[id];
+  d->_wordsLock.Release();
 }
 
 
 int
 Dictionary::save(const std::string& path, const std::string &basename, const std::string &encoding){
-  char filename[PATH_MAX];
-  FILE *fp = NULL;
-  int ret;
   rwtrans_func_t *w;
-
-  snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), basename.c_str());
-  fp = fopen(filename, "w");
-  if (!fp){
-    SM_LOG_WARNING ("open dictionary file [%s] error", filename);
-    goto error;
-  }
-  ret = fprintf (fp, "non-zero-entry %d\nword-num %zu\n", _nnz, _words.size());
-  if (ret < 0) {
-    SM_LOG_WARNING ("write meta content error");
-    goto error;
-  }
-
-  fclose(fp);
-
-  snprintf (filename, PATH_MAX, "%s/%s.dict", path.c_str(), basename.c_str());
-  fp = fopen(filename, "w");
-  if (!fp) {
-    SM_LOG_WARNING ("open dictionary file [%s] error", filename);
-    goto error;
-  }
-
-  ret = fprintf (fp, "%s\n", encoding.c_str());
-  if (ret < 0) {
-    SM_LOG_WARNING ("write to file error");
-    goto error;
-  }
-
-  SM_LOG_DEBUG ("writing %zu word to file [%s]", _words.size(), filename);
   w = get_rwtrans(encoding);
   assert (w);
-  for (size_t i = 0; i < _words.size(); i++)
-    {
-      string buffer;
-      w(_words[i], &buffer);
-      ret = fprintf (fp, "%d%c%s\n", _dfs[i], ESCAPE, buffer.c_str());
-      if (-1 == ret) {
-        SM_LOG_WARNING ("write dictionary error");
-        goto error;
-      }
-    }
-  
-  fclose(fp);
-  
+
+  char fullpath[PATH_MAX];
+  if (_version != 0) {
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict.%lu", path.c_str(), basename.c_str(), _version);
+  } else {
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict", path.c_str(), basename.c_str());
+  }
+
+  ofstream os(fullpath);
+  if (!os.is_open()) return -1;
+  google::protobuf::io::OstreamOutputStream oos(&os);
+  google::protobuf::io::GzipOutputStream gzips(&oos);
+
+  smpb::Dictionary serial_dict;
+
+  for (size_t i = 0; i < _words.size(); i++) {
+    string *buffer = serial_dict.add_words();
+    assert ( 0 == w(_words[i], buffer));
+  }
+
+  serial_dict.set_nnz(_nnz);
+  serial_dict.set_npos(_nPos);
+  serial_dict.set_version(_version);
+
+  if (!serial_dict.SerializeToZeroCopyStream(&gzips)){
+    SM_LOG_WARNING ("serialize to os error");
+    return -1;
+  }
+
+  SM_LOG_NOTICE ("save dictionary %s success", fullpath);
   return 0;
- error:
-  if (fp) fclose(fp);
-  return -1;
 }
 
 int
 Dictionary::load (const std::string &path, const std::string &base) {
-  char filename[PATH_MAX], word[MAX_WORD_LEN];
-  int id, line, dfs, wordcount;
-  vector<string> contents;
-  map<int, int> frequencies;
-  FILE *fp;
-  wtrans_func_t *w;
-
-  snprintf (filename, PATH_MAX, "%s/%s.dict.meta", path.c_str(), base.c_str());
-  fp = fopen(filename, "r");
-  if (!fp){
-    SM_LOG_WARNING ("open dict meta [%s] for load error", filename);
-    goto error;
+  char fullpath[PATH_MAX];
+  if (_version != 0) {
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict.%lu", path.c_str(), base.c_str(), _version);
+  } else {
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict", path.c_str(), base.c_str());
   }
 
-  if ( 2 != fscanf( fp, "non-zero-entry %d\nword-num %d\n", &_nnz, &wordcount) ) {
-    SM_LOG_WARNING ("read dict meta content error");
-    goto error;
+  ifstream is(fullpath);
+  if (!is.is_open()) {
+    SM_LOG_WARNING ("open dict file %s error", fullpath);
+    return -1;
   }
-  fclose(fp);
+  google::protobuf::io::IstreamInputStream iis(&is);
+  google::protobuf::io::GzipInputStream gzips(&iis);
 
-
-  snprintf (filename, PATH_MAX, "%s/%s.dict", path.c_str(), base.c_str());
-  fp = fopen (filename, "r");
-  if (!fp) {
-    SM_LOG_WARNING ("open dict [%s] for load error", filename);
-    goto error;
-  }
-
-  id = 0, line = 0;
-  _dfs.resize(wordcount);
-
-  //get file encoding
-  if (NULL == myfgets (word, MAX_WORD_LEN, fp)) {
-    SM_LOG_WARNING("get encoding line error");
-    goto error;
+  smpb::Dictionary deserial_dict;
+  if (!deserial_dict.ParseFromZeroCopyStream(&gzips)) {
+    SM_LOG_WARNING ("parse dict %s error", fullpath);
+    return -1;
   }
 
-  w = get_wtrans(word);
-  if (!w) {
-    SM_LOG_WARNING("invalid encoding : %s", word);
-    goto error;
+  if (_version != deserial_dict.version()){
+    SM_LOG_WARNING ("expect dict version is %lu, file is %lu", _version, deserial_dict.version());
+    return -1;
   }
-
-  while (1) {
+  
+  for (int i = 0; i < deserial_dict.words_size(); i++) {
     wstring buffer;
-    if (id > wordcount) break;
-    memset (word, 0, sizeof word);
-    if (myfgets (word, MAX_WORD_LEN, fp) == NULL ){
-      break;
-    }
-    char *sep = strchr(word, ESCAPE);
-    if (!sep) {
-      SM_LOG_WARNING("dict format error in line %d", line);
-      goto error;
-    }
-    *sep = '\0';
-
-    if (1 != sscanf (word, "%d", &dfs)){
-      SM_LOG_WARNING("dict format error in line %d", line);
-      goto error;
-    }
-
-    w(sep+1, &buffer);
-    line++;
-    
-    _words.push_back(buffer);
-    _wordmap[buffer] = id;
-    _dfs[id] = dfs;
-    id++;
+    encoding_utf8_to_wchar(deserial_dict.words(i), &buffer);
+    _words.push_back (buffer);
+    _wordmap[buffer] = i;
   }
 
-  fclose(fp);
-  return 0;
+  if (deserial_dict.has_npos()) {
+    _nPos = deserial_dict.npos();
+  }
 
- error:
-  if (fp) fclose(fp);
-  return -1;
+  if (deserial_dict.has_nnz()){
+    _nnz = deserial_dict.nnz();
+  }
+
+  SM_LOG_NOTICE ("load dictionary [%s] version %lu success, %zu words", 
+                 fullpath, _version, _words.size());
+  return 0;
 }

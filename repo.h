@@ -7,7 +7,9 @@
 #include <sys/types.h>
 #include <map>
 #include "concurrent.h"
+#include "dictionary.h"
 #include "kvproxy_client.h"
+#include "corpus.h"
 
 namespace sm {
   class Repository;
@@ -29,7 +31,7 @@ namespace sm {
     Repository(const std::string &local, 
                const std::string &mola_conf_path, 
                const std::string &mola_conf_file,
-               int nworkers = 5);
+               int nworkers = 12);
 
     virtual ~Repository();
 
@@ -41,12 +43,19 @@ namespace sm {
     int doJob(const std::string &doc);
     
     void waitAllJobDone();
+    
+    int tfidf ();
+    int save(const std::string &basepath);
    private:
     std::string _localpath, _mola_path, _mola_file;
     uint64_t _sign_doc(const std::string &doc);
-    std::map<int64_t, std::string> _docmap;
+    std::map<int, uint64_t> _docmap;
 
     std::vector<RepositoryWorker *> _workers;
+
+    Lock _docmapLock;
+    Dictionary _dict;
+    Corpus _corpus, _tfidf;
   };
 };
 #endif

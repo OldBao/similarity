@@ -21,6 +21,7 @@ else:
     CXXFLAGS('-g -O2 -pipe -W -Wall -fPIC -DNDEBUG')
 
 
+PROTOC ('../../../../../../third-64/protobuf/bin/protoc')
 INCPATHS('. ./include ./output ./output/include')
 
 LDFLAGS('-lpthread -lcrypto -lrt -L.')
@@ -36,9 +37,12 @@ CONFIGS('lib2-64/ccode@ccode_3-5-18-1_PD_BL')
 CONFIGS('lib2-64/postag@postag_1-3-6-0_PD_BL')
 CONFIGS('third-64/gtest@gtest_1-6-0-100_PD_BL')
 CONFIGS('third-64/json-c@json-c_0-9-0-100_PD_BL')
+CONFIGS('third-64/protobuf@protobuf_2-4-1-1100_PD_BL')
+CONFIGS('third-64/zlib@zlib_1-2-3-400_PD_BL')
 #CONFIGS('app/mobile/flyflow/server/cbs/lib@lib_2-0-26-0_PD_BL')
 
-user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc kvproxy_client.cc'
+user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc kvproxy_client.cc '
+user_sources+= 'interface/dict.proto interface/corpus.proto interface/bow.proto interface/lda.proto'
 user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h'
 
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))

@@ -14,8 +14,8 @@ main(int argc, char **argv){
   logstat.events = 4;
   logstat.spec= 0;
   ul_openlog("./log", "junk", &logstat, 1024);
-  if (argc != 2) {
-    cout << "./server url" << endl;
+  if (argc != 3) {
+    cout << "./server url path" << endl;
     return 0;
   }
 
@@ -27,22 +27,33 @@ main(int argc, char **argv){
     return -1;
   }
 
-
   Repository repo("doccache", "conf/online", "mola.conf");
   if (0 != repo.open()){
     cout << "open repo error " << endl;
     return -1;
   }
 
-  vector<string> urls;
-
-  for (i = 0; i < 1; i++) {
+  i = 0;
+  while (1) {
+    i++;
+    if (i % 1000 == 0) {
+      break;
+      sleep (10);
+    }
     string url;
     is >> url;
-    urls.push_back (url);
+    if (is.eof()) break;
+    repo.addUrl(url);
   }
 
-  repo.addUrls(urls);
-  while (1) { sleep (10);}
-  //repo.waitAllJobDone();
+  repo.waitAllJobDone();
+  /*
+  cout << "begin calculate tfidf" << endl;
+  repo.tfidf();
+  
+  cout << "calculate done" << endl;
+  */
+  repo.save (argv[2]);
+
+  return 0;
 }

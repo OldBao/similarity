@@ -60,17 +60,11 @@ class Token {
   Token();
   Token(token_t scw_token, const std::string &encoding="gbk");
 
-  const std::string& toString() const{
-    return _desc;
-  }
   std::wstring content;
   int type;
   int weight, lprop, hprop;
 
  private:
-  std::string _desc;
- 
-  void format();
 };
 }
 #endif

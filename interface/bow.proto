@@ -1,0 +1,12 @@
+package smpb;
+
+message BowUnit {
+    required int32 id = 1;
+    required double weight = 2;
+};
+
+message Bow {
+    repeated BowUnit units = 1;
+    optional double total = 5;
+    optional double norm = 6;
+};

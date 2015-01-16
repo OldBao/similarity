@@ -34,7 +34,7 @@ TFIDFModel::TFIDFModel (Corpus *corpus, Dictionary *dict) :
 
       for (size_t i = 0; i < b.size(); i++) {
         const bow_unit_t &u = b[i];
-        if (u.id >= _dfs.size()) _dfs.resize(u.id+1);
+        if (u.id >= (int)_dfs.size()) _dfs.resize(u.id+1);
 
         _dfs[u.id]++;
 
@@ -70,11 +70,11 @@ TFIDFModel::inference (const Corpus  &corpus, Corpus *dest, bool normalize) {
   for (size_t i = 0; i < corpus.size(); i++) {
     bow_t ret;
     if (0 == i % 1000) {
-        SM_LOG_DEBUG ("computed %d", i);
+        SM_LOG_DEBUG ("computed %zu", i);
     }
     assert ( 0 == inference (corpus[i], &ret, normalize) );
     ret.pre_handle();
-    assert ( dest->addDoc (ret) >= 0) ;
+    assert ( dest->addDoc (corpus.getDocid(i), ret) >= 0) ;
   }
 
   return 0;

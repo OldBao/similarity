@@ -1,31 +1,48 @@
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/gzip_stream.h>
+#include <fstream>
 #include "log.h"
 #include "corpus.h"
 #include "model.h"
+
+#include "interface/corpus.pb.h"
 
 using namespace std;
 using namespace sm;
 
 static int getMaxIdFromBow (const bow_t & bow);
 
-Corpus::Corpus(Dictionary *dict) : _dict(dict), _nterms(0), _mdl(0){
+Corpus::Corpus(Dictionary *dict, uint64_t version) : 
+  _dict(dict), _nterms(0), _mdl(0), _version(version){
 
 }
 
 
 int
-Corpus::addDoc( const bow_t &bow ) {
+Corpus::addDoc( uint64_t docid, const bow_t &bow ) {
+  int newid;
+  _docsLock.AcquireWrite();
   _docs.push_back(bow);
+  _docids.push_back(docid);
+  newid = _docs.size() - 1;
+  _docsLock.Release();
+
+  _docmapLock.AcquireWrite();
+  _docmap[docid] = newid;
+  _docmapLock.Release();
+  
   if (bow.size() > _mdl) {
     _mdl = bow.size();
   }
 
   int ret = getMaxIdFromBow (bow);
+  _coreLock.Acquire();
   if (ret+1 > _nterms) {
     _nterms = ret+1;
   }
+  _coreLock.Release();
 
-  _update();
-  return _docs.size()-1;
+  return newid;
 }
 
 
@@ -35,7 +52,12 @@ Corpus::~Corpus(){
 
 size_t
 Corpus::size() const {
-  return _docs.size();
+  int s;
+  Corpus *d = const_cast<Corpus *>(this);
+  d->_docsLock.AcquireRead();
+  s = _docs.size();
+  d->_docsLock.Release();
+  return s;
 }
 
 
@@ -43,7 +65,11 @@ const bow_t &
 Corpus::at(size_t i) const{
   assert (i < _docs.size());
 
-  return _docs[i];
+  Corpus *d = const_cast<Corpus *>(this);
+  d->_docsLock.AcquireRead();
+  const bow_t &ref =  _docs[i];
+  d->_docsLock.Release();
+  return ref;
 }
 
 const bow_t &
@@ -51,21 +77,17 @@ Corpus::operator [](size_t i) const{
   return at(i);
 }
 
-void
-Corpus::_update(){
-  char buffer[4096];
-  snprintf (buffer, 4096, "%zu documents", _docs.size());
-  _desc.assign (buffer);
-}
 
 int
 Corpus::truncate (int num_features) {
-  for (int i = 0; i < _docs.size(); i++) {
-    if (_docs[i].size() > num_features) {
+  _docsLock.AcquireRead();
+  for (size_t i = 0; i < _docs.size(); i++) {
+    if ((int)_docs[i].size() > num_features) {
       _docs[i].resize(num_features);
       _docs[i].pre_handle();
     }
   }
+  _docsLock.Release();
 
   return 0;
 }
@@ -73,111 +95,137 @@ Corpus::truncate (int num_features) {
 
 int
 Corpus::save(const std::string& path, const std::string &basename){
-  char filename[PATH_MAX];
-  FILE *fp = NULL;
-  int ret;
-  bow_t bow;
+  smpb::Corpus serial_corpus;
+  char fullpath[PATH_MAX];
 
-  snprintf (filename, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
-  fp = fopen(filename, "w");
-  if (!fp) {
-    SM_LOG_WARNING ("OPEN corpus file [%s] for writing error", filename);
-    goto error;
+  if (_version) {
+    snprintf (fullpath, PATH_MAX, "%s/%s.corpus.%lu", path.c_str(), basename.c_str(), _version);
+  } else {
+    snprintf (fullpath, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
   }
+
+
+  ofstream os(fullpath);
+  if (!os.is_open()){
+    SM_LOG_WARNING ("open out file %s fail", fullpath);
+    return -1;
+  }
+  google::protobuf::io::OstreamOutputStream oos(&os);
+  google::protobuf::io::GzipOutputStream gzips(&oos);
+
+  serial_corpus.set_version(_version);
+  serial_corpus.set_nterms(_nterms);
 
   for (size_t i = 0; i < _docs.size(); i++) {
-    const bow_t& b = _docs[i];
-    if (b.size() == 0) continue;
-    ret = fprintf (fp, "%zu:%.10lf:%.10lf ", b.size(), b.total(), b.norm());
-    
-    if (ret < 0){
-      SM_LOG_WARNING ("write corpus file error");
-      goto error;
+    smpb::Doc *serial_doc = serial_corpus.add_docs();
+    smpb::Bow *serial_bow = serial_doc->mutable_bow();
+    const bow_t& doc = _docs[i];
+    serial_doc->set_docid(_docmap[i]);
+
+    if (doc.total() != NAN) {
+      serial_bow->set_total(doc.total());      
+    } 
+    if (doc.norm() != NAN) {
+      serial_bow->set_norm (doc.norm());
     }
 
-    for (size_t j = 0; j < b.size(); j++) {
-      ret = fprintf (fp, "%d:%.10lf ", b[j].id, b[j].weight);
-      if (ret < 0) {
-        SM_LOG_WARNING ("write corpus file error");
-        goto error;
+    for(size_t j = 0; j < doc.size(); j++) {
+      smpb::BowUnit *serial_bowunit = serial_bow->add_units();
+      serial_bowunit->set_id (doc[j].id);
+      serial_bowunit->set_weight (doc[j].weight);
       }
-    }
-    fprintf (fp, "\n");
   }
 
-  fclose(fp);
-  return  0;
+  if (!serial_corpus.SerializeToZeroCopyStream(&gzips)) {
+    SM_LOG_WARNING ("serialize to %s error", fullpath);
+    return -1;
+  }
 
- error:
-  if (fp) fclose (fp);
-  return -1;
+  SM_LOG_NOTICE ("save corpus [%s] success", fullpath);
+  return 0;
 }
 
 
 int
 Corpus::load(const std::string &path, const std::string &basename){
-  char filename[PATH_MAX];
-  FILE *fp = NULL;
-  int ret;
-  int length;
-  int line = 0;
-  int id;
-  double weight;
-  bow_t bow;
-  bow_unit_t u;
-  double total, norm;
-
+  char fullpath[PATH_MAX];
   
-  snprintf (filename, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
-  fp = fopen(filename, "r");
-  if (!fp) {
-    SM_LOG_WARNING ("OPEN file [%s] for reading error", filename);
-    goto error;
+  snprintf (fullpath, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
+  ifstream is(fullpath);
+  if (is.is_open()) {
+    SM_LOG_WARNING ("OPEN file [%s] for reading error", fullpath);
+    return -1;
   }
 
-  line = 0;
-  while (1) {
-    ret = fscanf (fp, "%d:%lf:%lf", &length, &total, &norm);
-    line++;
-    if (ret == EOF) break;
-    else if (ret != 3) {
-      SM_LOG_WARNING ("file [%s] format error", filename);
-      goto error;
+  google::protobuf::io::IstreamInputStream iis(&is);
+  google::protobuf::io::GzipInputStream gzips(&iis);
+  smpb::Corpus deserial_corpus;
+
+  if (!deserial_corpus.ParseFromZeroCopyStream(&gzips)){
+    SM_LOG_WARNING ("parse corpus file %s error", fullpath);
+    return -1;
+  }
+
+  if (_version != deserial_corpus.version()){
+    SM_LOG_WARNING ("expect corpus version is %lu, file is %lu", _version, deserial_corpus.version());
+    return -1;
+  }
+  _nterms = deserial_corpus.nterms();
+
+  for (size_t i = 0; i < deserial_corpus.docs_size(); i++) {
+    const smpb::Doc &deserial_doc = deserial_corpus.docs(i);
+    _docmap[deserial_doc.docid()] = i;
+
+    const smpb::Bow &dbow = deserial_doc.bow();
+    bow_t bow;
+    for (size_t j = 0; j < dbow.units_size(); j++) {
+      const smpb::BowUnit &dbowunit = dbow.units(j);
+
+      bow_unit_t u;
+      u.id = dbow.units(j).id();
+      u.weight = dbow.units(j).weight();
+      bow.push_back(u);
     }
 
-    if (length == 0) continue;
-
-    bow.clear();
-    bow.setTotal(total);
-    bow.setNorm(norm);
-    for (int n = 0; n < length; n++) {
-      ret = fscanf (fp, "%d:%lf", &id, &weight);
-      if (ret != 2) {
-        SM_LOG_WARNING("file [%s:%d:%d] format error", filename, line, n);
-        goto error;
-      }
-      u.id = id;
-      u.weight = weight;
-      bow.push_back(u);
+    if (dbow.has_total()) {
+      bow.setTotal (bow.total());
+    } else {
+      bow._cal_total();
+    }
+    if (dbow.norm()) {
+      bow.setNorm (bow.norm());
+    } else {
+      bow._cal_norm();
     }
     bow.setPreHandled(true);
 
-    assert(bow.size() == length);
+    if (bow.size() > _mdl) {
+      _mdl = bow.size();
+    }
 
-    addDoc(bow);
+    _docs.push_back(bow);
+    _docids.push_back(deserial_doc.docid());
   }
-  
-  fclose(fp);
 
-  SM_LOG_NOTICE ("load corpus: %d docs, %d terms", size(), _nterms);
-  
+
+  SM_LOG_NOTICE ("Load coprus %s version %lu success: %zu docs, %zu terms",
+                 fullpath, _docs.size(), _nterms);
   return 0;
-  
- error:
-  if (fp) fclose(fp);
-  return -1;
 }
 
+
+uint64_t
+Corpus::getDocid(size_t id) const{
+
+  Corpus *c = const_cast <Corpus *> (this);
+  uint64_t docid;
+  c->_docsLock.AcquireRead();
+  assert (id < _docids.size());
+  docid = _docids[id];
+  c->_docsLock.Release();
+  return docid;
+  
+}
 static int getMaxIdFromBow (const bow_t & bow) {
   int max = -1;
   for (size_t i = 0; i < bow.size(); i++) {

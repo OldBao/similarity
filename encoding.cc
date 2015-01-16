@@ -34,7 +34,7 @@ static int encoding_iconv (const string& from, string *to, const char * fromenco
         outlen = BUFFER_SIZE;
         continue;
       } else if (errno == EINVAL) {
-        SM_LOG_NOTICE ("incomplete byte in %d", from.size() - inlen);
+        SM_LOG_NOTICE ("incomplete byte in %zu", from.size() - inlen);
         break;
       }
       else {

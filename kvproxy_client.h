@@ -11,7 +11,8 @@ namespace sm {
 
     int Connect (const std::string &addr, const std::string& port);
     int Send (const void *buf, size_t len);
-    int Recv (void *buf, size_t len);    
+    int Recv (void *buf, size_t len);
+    void Close();
   private:
     int _fd;
   };
@@ -25,7 +26,7 @@ namespace sm {
 
     int get(const std::string &key, std::string *value);
   private:
-    Socket _socket;
+    //Socket _socket;
   };
 };
 

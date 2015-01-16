@@ -27,6 +27,18 @@ namespace sm {
     pthread_mutex_t _lock;
   };
 
+  class RWLock {
+  public:
+    RWLock();
+    ~RWLock();
+    
+    void AcquireRead();
+    void AcquireWrite();
+    void Release();
+  private:
+    pthread_rwlock_t _lock;
+  };
+
 
   class Cond {
   public:
@@ -66,7 +78,7 @@ namespace sm {
     virtual void waitAllJobDone();
     void thread_member();
   private:
-    bool _stopping, _stopped;
+    bool _stopping, _stopped, _wait_done;
     pthread_t _td;
     std::priority_queue< _internal_Job <T> > _jobQueue;
     Lock _cmdLock, _jobLock, _emptyLock;

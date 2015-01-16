@@ -21,15 +21,15 @@ TEST_F (TFIDFTestCase, TestNormal){
   add_w(&bow, 2, 1);
   add_w(&bow, 3, 1);
 
-  corpus->addDoc (bow);
+  corpus->addDoc (1, bow);
   
   bow.clear();
   add_w(&bow, 1, 2);
-  corpus->addDoc (bow);
+  corpus->addDoc (2, bow);
 
   bow.clear();
   add_w(&bow, 2, 2);
-  corpus->addDoc (bow);
+  corpus->addDoc (3, bow);
 
   ASSERT_EQ (corpus->size(), 3);
 

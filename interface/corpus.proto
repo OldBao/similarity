@@ -1,0 +1,15 @@
+//corpus stroage format
+package smpb;
+import "bow.proto";
+
+message Doc {
+    required uint64 docid = 1; //id actually
+    required Bow bow = 2;
+    //optional string url = 5;
+};
+
+message Corpus {
+    required int64 version = 1;
+    required int32 nterms = 2;
+    repeated Doc docs = 3;    
+};

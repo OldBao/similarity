@@ -7,11 +7,12 @@
 #include <list>
 #include "document.h"
 #include "bow.h"
+#include "concurrent.h"
 
 namespace sm {
   class Dictionary {
   public:
-    Dictionary ();
+    Dictionary (uint64_t version = 0);
     virtual ~Dictionary();
     int addDocuments(const std::vector <Document> &documents);
     int addDocument(const Document &documents);
@@ -20,10 +21,7 @@ namespace sm {
                 const Document &document, 
                 bool update = false);
 
-    const std::string &toString() const{
-      return _desc;
-    }
-
+    int addRawDoc(bow_t* bow, const std::vector< std::pair<std::string, double> >& doc);
     int size(){
       return _words.size();
     }
@@ -40,13 +38,16 @@ namespace sm {
     const std::vector<std::wstring> getWords() {return _words;} 
     const std::map<std::wstring, int> getWordsMap() {return _wordmap;} 
   private:
-    void _update();
-    std::string _desc;
     int  _nPos, _nnz;
+    uint64_t _version;
     std::vector<std::wstring> _words;
     std::map <std::wstring, int> _wordmap;
     std::vector<int> _dfs;
     uint64_t _mask;
+
+    RWLock _wordmapLock;
+    Lock _nnzLock;
+    RWLock _wordsLock;
   };
 };
 #endif

@@ -37,6 +37,15 @@
 #define __SM_CHECK(cond, fmt, arg...) {           \
     SM_LOG_WARNING ("assert (" #cond ") fails : " fmt "\n", ##arg); \
   }
+
+#define SM_CHECK_RET(ret, cond, fmt, arg...)  {                 \
+    if (!(cond)) {                                              \
+      SM_LOG_WARNING ("assert [" #cond "] fails : " fmt "\n", ##arg);   \
+      return ret;                                               \
+    }                                                           \
+  }
+
+
 #endif
 
 

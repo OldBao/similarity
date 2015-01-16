@@ -18,6 +18,7 @@ static const int MAX_PACK_SIZE = 2048;
 static const char *PROVIDER = "Similarity";
 static const uint16_t NS = TopicNamespace;
 static const int HEADSIZE = sizeof (nshead_t) + sizeof (cache_req_t);
+static const int RES_HEADSIZE = sizeof (nshead_t) + sizeof (cache_res_t);
 
 
 Socket::Socket() : _fd(-1) {
@@ -59,6 +60,13 @@ Socket::Connect(const std::string& addr, const std::string& port) {
   return 0;
 }
 
+void
+Socket::Close (){
+  if (_fd != -1) {
+    close (_fd);
+    _fd = -1;
+  }
+}
 
 int
 Socket::Recv (void *buffer, size_t cnt) {
@@ -124,7 +132,6 @@ Socket::Send (const void *buf, size_t cnt) {
 
 
 KvProxyClient::KvProxyClient() {
-  
 }
 
 KvProxyClient::~KvProxyClient(){
@@ -133,24 +140,27 @@ KvProxyClient::~KvProxyClient(){
 
 int
 KvProxyClient::open(){
-  SM_CHECK_RET_ERR ( 0 == _socket.Connect("10.40.35.35", "8318"), "connect error");
 
-  return 0;
 }
 
 
 int
 KvProxyClient::get(const std::string &key, std::string *value) {
   SM_ASSERT (value && value->size() == 0, "caller given a wrong value");
+  Socket _socket;
+  _socket.Connect("10.40.35.35", "8318");
 
-  char request_packet[HEADSIZE];
+  char request_packet[HEADSIZE], recv_packet[RES_HEADSIZE];
 
-  nshead_t * head = (nshead_t *) request_packet;
+  nshead_t    *head  = (nshead_t *) request_packet, 
+    *res_head = (nshead_t *) recv_packet;
   cache_req_t *req = (cache_req_t *) (request_packet + sizeof (nshead_t));
-  nshead_t res_head;
-  cache_res_t res;
+  cache_res_t *res = (cache_res_t *) (recv_packet + sizeof (nshead_t));
   char *body;
   int expect_body_size;
+  int ret;
+  memset (request_packet, 0, sizeof (request_packet));
+  memset (recv_packet, 0, sizeof (recv_packet));
 
   head->body_len = sizeof (cache_req_t);
   head->magic_num = NSHEAD_MAGICNUM;
@@ -159,25 +169,29 @@ KvProxyClient::get(const std::string &key, std::string *value) {
   req->name_space = NS;
   req->cmd_id = CMD_CACHE_SEEK;
   memcpy(req->key, key.c_str(), key.size());
+  
+  ret = _socket.Send (request_packet, HEADSIZE);
+  if (ret != HEADSIZE) {
+    SM_LOG_WARNING ("write send packet error : %d", ret);
+    return -1;
+  }
 
-  bzero (&res_head, sizeof (res_head));
-  bzero (&res, sizeof (res));
+  ret = _socket.Recv (recv_packet, RES_HEADSIZE);
+  if (ret != RES_HEADSIZE) {
+    SM_LOG_WARNING ("receive packet error: %d", ret);
+    return -1;
+  }
+  
+  SM_CHECK_RET_ERR(res_head->magic_num == NSHEAD_MAGICNUM, "not a nshead");
 
-  SM_CHECK_RET_ERR(HEADSIZE == _socket.Send (request_packet, HEADSIZE), "write error");
-  SM_CHECK_RET_ERR(sizeof(nshead_t) == _socket.Recv (&res_head, sizeof (nshead_t)), 
-                   "nshead not receive, this must be a server error");
-  SM_CHECK_RET_ERR(sizeof(cache_res_t) == _socket.Recv (&res, sizeof (cache_res_t)),
-                   "cache res not receive, this must be a server error");
-  SM_CHECK_RET_ERR(res_head.magic_num == NSHEAD_MAGICNUM, "not a nshead");
-
-  switch (res.ret_no != 0){
+  switch (res->ret_no != 0){
   case 0:
-    body = (char *) malloc (res_head.body_len);
-    expect_body_size = res_head.body_len - sizeof (cache_res_t);
+    body = (char *) malloc (res_head->body_len);
+    expect_body_size = res_head->body_len - sizeof (cache_res_t);
     if ( expect_body_size != _socket.Recv(body, expect_body_size) ){
       SM_LOG_WARNING ("receive packet error");
     } else {
-      value->assign(body, res_head.body_len);
+      value->assign(body, res_head->body_len);
     }
     free (body);
     return 0;
@@ -187,13 +201,9 @@ KvProxyClient::get(const std::string &key, std::string *value) {
 
   default:
     //if unknown error happens, and has body ,try to read all and ignore
-    if (res.b_body) {
-      string tmp;
-      tmp.resize(res_head.body_len - sizeof (res));
-      _socket.Recv (&tmp[0], res_head.body_len - sizeof (res));
-    }
     return -1;
   }
 
+  _socket.Close();
   return -1;
 }

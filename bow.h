@@ -25,7 +25,7 @@ namespace sm {
     void resize(size_t size);
     void clear();
     void pre_handle();
-    void setPreHandled(bool t) {_pre_handled = true;}
+    void setPreHandled(bool t) {_pre_handled = t;}
 
     void setTotal(double total) { _total = total;}
     double total () const;
@@ -35,9 +35,10 @@ namespace sm {
     void unitvec();
     void sort();
 
-  private:
     double _cal_total();
     double _cal_norm();
+  private:
+
 
     std::vector<bow_unit_t> _v;
     double _norm, _total;

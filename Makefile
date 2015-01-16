@@ -61,7 +61,15 @@ DEP_INCPATH=-I../../../../../../lib2-64/ccode \
   -I../../../../../../third-64/json-c \
   -I../../../../../../third-64/json-c/include \
   -I../../../../../../third-64/json-c/output \
-  -I../../../../../../third-64/json-c/output/include
+  -I../../../../../../third-64/json-c/output/include \
+  -I../../../../../../third-64/protobuf \
+  -I../../../../../../third-64/protobuf/include \
+  -I../../../../../../third-64/protobuf/output \
+  -I../../../../../../third-64/protobuf/output/include \
+  -I../../../../../../third-64/zlib \
+  -I../../../../../../third-64/zlib/include \
+  -I../../../../../../third-64/zlib/output \
+  -I../../../../../../third-64/zlib/output/include
 
 #============ CCP vars ============
 CCHECK=@ccheck.py
@@ -73,7 +81,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=6cb3d40dec80d1f4e3056556c5bd1ac3  COMAKE
+COMAKE_MD5=ce177675aa53570613d8a944c59e825e  COMAKE
 
 
 .PHONY:all
@@ -130,6 +138,18 @@ clean:ccpclean
 	rm -rf similarity_concurrent.o
 	rm -rf similarity_repo.o
 	rm -rf similarity_kvproxy_client.o
+	rm -rf interface/dict.pb.cc
+	rm -rf interface/dict.pb.h
+	rm -rf interface/similarity_dict.pb.o
+	rm -rf interface/corpus.pb.cc
+	rm -rf interface/corpus.pb.h
+	rm -rf interface/similarity_corpus.pb.o
+	rm -rf interface/bow.pb.cc
+	rm -rf interface/bow.pb.h
+	rm -rf interface/similarity_bow.pb.o
+	rm -rf interface/lda.pb.cc
+	rm -rf interface/lda.pb.h
+	rm -rf interface/similarity_lda.pb.o
 	rm -rf train_main.o
 	rm -rf sim_sim_main.o
 	rm -rf server_server.o
@@ -166,6 +186,10 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_concurrent.o \
   similarity_repo.o \
   similarity_kvproxy_client.o \
+  interface/similarity_dict.pb.o \
+  interface/similarity_corpus.pb.o \
+  interface/similarity_bow.pb.o \
+  interface/similarity_lda.pb.o \
   dictionary.h \
   document.h \
   token.h \
@@ -190,7 +214,11 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_bow.o \
   similarity_concurrent.o \
   similarity_repo.o \
-  similarity_kvproxy_client.o
+  similarity_kvproxy_client.o \
+  interface/similarity_dict.pb.o \
+  interface/similarity_corpus.pb.o \
+  interface/similarity_bow.pb.o \
+  interface/similarity_lda.pb.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
@@ -210,7 +238,11 @@ train:train_main.o \
   ../../../../../../public/odict/libodict.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
-  ../../../../../../third-64/json-c/lib/libjson.a -lpthread \
+  ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf.a \
+  ../../../../../../third-64/protobuf/lib/libprotoc.a \
+  ../../../../../../third-64/zlib/lib/libz.a -lpthread \
   -lcrypto \
   -lrt \
   -L. -Xlinker "-)" -o train
@@ -231,7 +263,11 @@ sim:sim_sim_main.o \
   ../../../../../../public/odict/libodict.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
-  ../../../../../../third-64/json-c/lib/libjson.a -lpthread \
+  ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf.a \
+  ../../../../../../third-64/protobuf/lib/libprotoc.a \
+  ../../../../../../third-64/zlib/lib/libz.a -lpthread \
   -lcrypto \
   -lrt \
   -L. -Xlinker "-)" -o sim
@@ -252,7 +288,11 @@ server:server_server.o \
   ../../../../../../public/odict/libodict.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
-  ../../../../../../third-64/json-c/lib/libjson.a -lpthread \
+  ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf.a \
+  ../../../../../../third-64/protobuf/lib/libprotoc.a \
+  ../../../../../../third-64/zlib/lib/libz.a -lpthread \
   -lcrypto \
   -lrt \
   -L. -Xlinker "-)" -o server
@@ -272,7 +312,10 @@ similarity_dictionary.o:dictionary.cc \
   document.h \
   token.h \
   bow.h \
-  encoding.h
+  concurrent.h \
+  concurrent.hpp \
+  encoding.h \
+  interface/dict.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_dictionary.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_dictionary.o dictionary.cc
 
@@ -319,9 +362,13 @@ similarity_corpus.o:corpus.cc \
   document.h \
   token.h \
   bow.h \
+  concurrent.h \
+  concurrent.hpp \
   model.h \
   test/test_lda.h \
-  test/test_main.h
+  test/test_main.h \
+  interface/corpus.pb.h \
+  interface/bow.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_corpus.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_corpus.o corpus.cc
 
@@ -332,9 +379,11 @@ similarity_tfidf.o:tfidf.cc \
   document.h \
   token.h \
   bow.h \
+  concurrent.h \
+  concurrent.hpp \
+  log.h \
   test/test_lda.h \
-  test/test_main.h \
-  log.h
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_tfidf.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_tfidf.o tfidf.cc
 
@@ -345,10 +394,13 @@ similarity_lda.o:lda.cc \
   document.h \
   token.h \
   bow.h \
+  concurrent.h \
+  concurrent.hpp \
+  log.h \
   test/test_lda.h \
   test/test_main.h \
-  log.h \
-  encoding.h
+  encoding.h \
+  interface/lda.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lda.o lda.cc
 
@@ -368,12 +420,12 @@ similarity_similarity.o:similarity.cc \
   document.h \
   token.h \
   bow.h \
-  model.h \
-  test/test_lda.h \
-  test/test_main.h \
   concurrent.h \
   concurrent.hpp \
-  log.h
+  log.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_similarity.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_similarity.o similarity.cc
 
@@ -395,17 +447,87 @@ similarity_repo.o:repo.cc \
   concurrent.h \
   concurrent.hpp \
   log.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  bow.h \
   kvproxy_client.h \
-  encoding.h
+  corpus.h \
+  encoding.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_repo.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_repo.o repo.cc
 
 similarity_kvproxy_client.o:kvproxy_client.cc \
+  log.h \
   kvproxy_client.h \
   interface.h \
   cache_interface.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_kvproxy_client.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_kvproxy_client.o kvproxy_client.cc
+
+interface/dict.pb.cc \
+  interface/dict.pb.h:interface/dict.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/dict.pb.cc \
+  interface/dict.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/dict.proto
+
+interface/dict.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/dict.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_dict.pb.o:interface/dict.pb.cc \
+  interface/dict.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_dict.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_dict.pb.o interface/dict.pb.cc
+
+interface/corpus.pb.cc \
+  interface/corpus.pb.h:interface/corpus.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/corpus.pb.cc \
+  interface/corpus.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/corpus.proto
+
+interface/corpus.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/corpus.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_corpus.pb.o:interface/corpus.pb.cc \
+  interface/corpus.pb.h \
+  interface/bow.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_corpus.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_corpus.pb.o interface/corpus.pb.cc
+
+interface/bow.pb.cc \
+  interface/bow.pb.h:interface/bow.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/bow.pb.cc \
+  interface/bow.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/bow.proto
+
+interface/bow.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/bow.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_bow.pb.o:interface/bow.pb.cc \
+  interface/bow.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_bow.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_bow.pb.o interface/bow.pb.cc
+
+interface/lda.pb.cc \
+  interface/lda.pb.h:interface/lda.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/lda.pb.cc \
+  interface/lda.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/lda.proto
+
+interface/lda.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/lda.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_lda.pb.o:interface/lda.pb.cc \
+  interface/lda.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_lda.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_lda.pb.o interface/lda.pb.cc
 
 train_main.o:main.cc \
   segment.h \
@@ -449,9 +571,13 @@ server_server.o:server.cc \
   concurrent.h \
   concurrent.hpp \
   log.h \
-  kvproxy_client.h \
-  segment.h \
+  dictionary.h \
+  document.h \
   token.h \
+  bow.h \
+  kvproxy_client.h \
+  corpus.h \
+  segment.h \
   singleton.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver_server.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o server_server.o server.cc

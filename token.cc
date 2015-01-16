@@ -41,20 +41,4 @@ Token::Token(token_t t, const std::string &encoding) {
   type = t.type;
   lprop = t.prop.m_lprop;
   hprop = t.prop.m_hprop;
-  
-  format();
-}
-
-
-void
-Token::format(){
-  char buffer[4096];
-  snprintf (buffer, 4096, "[Content:%s] [Type:%s] [Weight:%d] [Prop:%d-%d] [Length:%d]",
-            content.c_str(),
-            get_pos_str(type),
-            weight,
-            lprop,
-            hprop,
-            content.length());
-  _desc.assign(buffer);
 }

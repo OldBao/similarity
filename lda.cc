@@ -1,6 +1,11 @@
+#include <fstream>
 #include "model.h"
 #include "log.h"
 #include "encoding.h"
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/gzip_stream.h>
+#include "interface/lda.pb.h"
+
 
 using namespace std;
 using namespace sm;
@@ -19,7 +24,7 @@ extern uint32_t randomMT();
 #define myrand() (double) (((unsigned long) randomMT()) / 4294967296.)
 
 
-LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
+LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, int version) :
   TopicModel(corpus, dict),
   _alpha(0.01), 
   _init_alpha(1.0),
@@ -31,6 +36,8 @@ LDAModel::LDAModel (Corpus *corpus, Dictionary *dict) :
   _max_alpha_iter(1000),
   _newton_threshold(1e-10),
   _ntopics(100),
+  _ndocs(_corpus->size()),
+  _version(version),
   _nterms(corpus->getNTerms()),
   _log_prob_w(NULL),
   _var_gamma(NULL),
@@ -55,7 +62,7 @@ LDAModel::_init_prob(){
 
   // allocate variational parameters
   _var_gamma = (double **) malloc(sizeof(double*) * (_corpus->size()));
-  for (int i = 0; i < _corpus->size(); i++)
+  for (size_t i = 0; i < _corpus->size(); i++)
     _var_gamma[i] = (double *) malloc(sizeof(double) * _ntopics);
 
   int max_length = _corpus->maxDocLen();
@@ -68,12 +75,12 @@ LDAModel::_init_prob(){
 LDAModel::~LDAModel(){
 
   if (_var_gamma) {
-    for (int i = 0; i < _corpus->size(); i++) free (_var_gamma[i]);
+    for (size_t i = 0; i < _corpus->size(); i++) free (_var_gamma[i]);
     free (_var_gamma);
   }
 
   if (_phi) {
-    for (int i = 0; i < _corpus->maxDocLen(); i++) free (_phi[i]);
+    for (size_t i = 0; i < _corpus->maxDocLen(); i++) free (_phi[i]);
     free (_phi);
   }
 
@@ -95,11 +102,11 @@ LDAModel::_cluster(){
 
   SM_LOG_DEBUG ("begin cluster docs %zu", _topics.size());
 
-  for (int i = 0; i < _corpus->size(); i++) {
+  for (size_t i = 0; i < _corpus->size(); i++) {
     bow_t ret;
     getMostLikelyTopicOfDoc (&ret, i, 0, 1);
     if (ret.size() != 0) {
-      SM_LOG_DEBUG ("doc [%d] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
+      SM_LOG_DEBUG ("doc [%zu] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
       assert (ret[0].id >= 0 && ret[0].id < _ntopics);
       _topics[ret[0].id].push_back (i);
     } else {
@@ -125,7 +132,7 @@ LDAModel::train(){
 
 void
 LDAModel::_em(LDAState *ss){
-  size_t d, n, max_length;
+  size_t d;
   int i;
   double likelihood, likelihood_old = 0, converged = 1;
 
@@ -163,171 +170,133 @@ int
 LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
   assert (0); //TODO, implement this
   assert (ret->size() == 0);
-  double *var_gamma[1], likelihood, **phi;
+  double *var_gamma[1], **phi;
 
   var_gamma[0] =  (double *)malloc (sizeof (double) * _ntopics);
   phi = (double **) malloc (sizeof (double *) * src.size());
-  for (int n = 0; n < src.size(); n++) {
+  for (size_t n = 0; n < src.size(); n++) {
     phi[n] = (double *) malloc (sizeof (double) * _ntopics);
   }
-  likelihood = _infer (src, var_gamma[0], phi);
+  _infer (src, var_gamma[0], phi);
 
+  if (normalized) {
+    ret->unitvec();
+  }
   return 0;
 }
 
 
-int LDAModel::inference (const Corpus& corpus, Corpus *ret, bool normalized) {
+int LDAModel::inference (const Corpus& __attribute__((unused)), 
+                         Corpus *__attribute__((unused)), 
+                         bool __attribute__((unused))) {
   return 0;
 }
 
-int LDAModel::save (const std::string &path, const std::string &basename) { 
+int LDAModel::save (const std::string &path, const std::string &basename) {
   char filename[PATH_MAX];
-  int ret;
-  snprintf (filename, PATH_MAX, "%s/%s.meta", path.c_str(), basename.c_str());
-  
-  FILE *fp = fopen(filename, "w");
-  if (!fp) {
-    SM_LOG_WARNING ("open  meta file %s error", filename);
-    goto error;
+  if (_version != 0) {
+    snprintf (filename, PATH_MAX, "%s/%s.lda.%lu", path.c_str(), basename.c_str(), _version);
+  } else {
+    snprintf (filename, PATH_MAX, "%s/%s.lda", path.c_str(), basename.c_str());
   }
   
-  ret = fprintf (fp, "num-topics %d\nnum-terms %d\nalpha %f\n", _ntopics, _corpus->getNTerms(), _alpha);
-  if (ret < 0) {
-    SM_LOG_WARNING ("write error");
-    goto error;
+  ofstream os(filename);
+  if (!os.is_open()){
+    SM_LOG_WARNING ("open %s error store lda", filename);
+    return -1;
   }
+  google::protobuf::io::OstreamOutputStream oos(&os);
+  google::protobuf::io::GzipOutputStream gzips(&oos);
+  
+  smpb::LDA slda;
 
-  fclose(fp);
-
-  snprintf(filename, PATH_MAX, "%s/%s.beta", path.c_str(), basename.c_str());
-  fp = fopen(filename, "w");
-  if (!fp) {
-    SM_LOG_WARNING ("opening beta file [%s] for writting error", filename);
-    goto error;
-  }
+  slda.set_version(_version);
+  slda.set_topics(_ntopics);
+  slda.set_terms(_nterms);
+  slda.set_alpha(_alpha);
 
   for (int i = 0; i < _ntopics; i++) {
     for (int j = 0; j < _nterms; j++) {
-      fprintf (fp, " %5.10f", _log_prob_w[i][j]);
+      slda.add_beta(_log_prob_w[i][j]);
     }
-    fprintf (fp, "\n");
-  }
-  fclose(fp);
-
-  snprintf (filename, PATH_MAX, "%s/%s.gamma", path.c_str(), basename.c_str());
-  fp = fopen(filename, "w");
-  if (!fp) {
-    SM_LOG_WARNING ("opening gamma file [%s] for writting error", filename);
-    goto error;
   }
   
-  for (int i = 0; i < _corpus->size(); i++){
-    fprintf (fp, "%5.10f", _var_gamma[i][0]);
-    for (int j = 1; j < _ntopics; j++) { 
-      fprintf (fp, " %5.10f", _var_gamma[i][j]);
+  for (size_t i = 0; i < _ndocs; i++){
+    for (size_t j = 0; j < _ntopics; j++) {
+      slda.add_gamma(_var_gamma[i][j]);
     }
-    fprintf (fp, "\n");
   }
 
-  fclose(fp);
-  return 0;
+  if (!slda.SerializeToZeroCopyStream(&gzips)){
+    SM_LOG_WARNING ("serialize to %s error", filename);
+    return -1;
+  }
 
- error:
-  if (fp) fclose(fp);
-  return -1;
+  SM_LOG_NOTICE ("save model %s success", filename);
+  return 0;
 }
 
 
-int LDAModel::load (const std::string &path, const std::string &basename) {
+int 
+LDAModel::load (const std::string &path, const std::string &basename) {
   char filename[PATH_MAX];
-  int nterms;
 
-  snprintf (filename, PATH_MAX, "%s/%s.meta", path.c_str(), basename.c_str());
-
-  FILE *fp = fopen (filename, "r");
-  if (!fp) {
-    SM_LOG_WARNING ("open meta file %s error", filename);
-    goto error;
-  }
-  if (3 != fscanf (fp, "num-topics %d\nnum-terms %d\nalpha %f\n", 
-                   &_ntopics, &nterms, &_alpha) )
-    {
-      SM_LOG_WARNING ("meta file format error!");
-      goto error;
-    }
-
-  SM_LOG_DEBUG ("opening meta file %s success", filename);
-  fclose(fp);
-
-  //assert (nterms == _nterms);
-  if (_dict && nterms != _dict->size()) {
-    SM_LOG_NOTICE ("hehe");
+  if (_version != 0) {
+    snprintf (filename, PATH_MAX, "%s/%s.lda.%lu", path.c_str(), basename.c_str(), _version);
+  } else {
+    snprintf (filename, PATH_MAX, "%s/%s.lda", path.c_str(), basename.c_str(), _version);
   }
 
+  ifstream is(filename);
+  if (!is.is_open()) {
+    SM_LOG_WARNING ("open dict file %s error", filename);
+    return -1;
+  }
+
+  google::protobuf::io::IstreamInputStream iis(&is);
+  google::protobuf::io::GzipInputStream gzips(&iis);
+
+  smpb::LDA dlda;
+  if (!dlda.ParseFromZeroCopyStream(&gzips)) {
+    SM_LOG_WARNING ("parse lda model [%s] error", filename);
+    return -1;
+  }
+
+  if (_version != dlda.version()) {
+    SM_LOG_WARNING ("expect lda model version is %lu, file is %lu", 
+                    _version, dlda.version());
+    return -1;
+  }
+
+
+  _nterms = dlda.terms();
+  _ntopics = dlda.topics();
+  _ndocs = dlda.docs();
   _init_prob();
 
-  snprintf (filename, PATH_MAX, "%s/%s.beta", path.c_str(), basename.c_str());
-  fp = fopen(filename, "r");
-  if (!fp) {
-    SM_LOG_WARNING ("open beta file %s error", filename);
-    goto error;
-  }
-
   for (int i = 0; i < _ntopics; i++) {
-    for (int j = 0; j < nterms; j++) {
-      float x;
-      if ( 1 != fscanf (fp, "%f", &x)){
-        SM_LOG_WARNING ("beta file format error");
-        goto error;
-      }
-
-      _log_prob_w[i][j] = x;
-        
+    for (int j = 0; j < _nterms; j++) {
+      _log_prob_w[i][j] = dlda.beta(i*_nterms + j);
     }
   }
 
-  snprintf (filename, PATH_MAX, "%s/%s.gamma", path.c_str(), basename.c_str());
-  fp = fopen(filename, "r");
-  if (!fp) {
-    SM_LOG_WARNING ("open gamma file %s error", filename);
-    goto error;
-  }
-
-  for (int i = 0; i < _corpus->size(); i++) {
+  for (size_t i = 0; i < _ndocs; i++) {
     for (int j = 0; j < _ntopics; j++) {
-      float x;
-      if ( 1 != fscanf (fp, "%f", &x)){
-        SM_LOG_WARNING ("gamma file format error");
-        goto error;
-      }
-      
-      _var_gamma[i][j] = x;
+      _var_gamma[i][j] = dlda.gamma(i*_ntopics+j);
     }
-    fscanf (fp, "\n");
   }
 
-  fclose(fp);
-  
-  return _cluster();
- error:
-  if (fp) {
-    fclose(fp);
-  }
-  if (_log_prob_w){
-    for (int i = 0; i < _ntopics; i++) {
-      free (_log_prob_w[i]);
-      }
-    free(_log_prob_w);
-  }
+  SM_LOG_NOTICE ("load lda model [%s] success", filename);
 
-  return -1;
+  _cluster();
+  return 0;
 }
 
 
 int
 LDAModel::getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold, int max_result) {
   assert (ret && ret->size() == 0);
-  assert (docid < _corpus->size());
+  assert (docid < (int)_corpus->size());
 
   for (int i = 0; i < _ntopics; i++) {
     bow_unit_t u;
@@ -576,12 +545,12 @@ LDAModel::_compute_likelihood(const bow_t& doc, double** phi, double* var_gamma)
 }
 
 
-LDAState::LDAState(const Corpus &corpus, int topics, int num_init):
+LDAState::LDAState(const Corpus &corpus, int topics):
   ndocs(0),
   _nterms (corpus.getNTerms()),
   _ntopics(topics)
 {
-  int i, j, k, d, n;
+  int i, j, k, n;
 
   class_word =  (double **)  malloc (sizeof (double) * _ntopics);
   class_total = (double *)  malloc (sizeof (double*) * _ntopics);

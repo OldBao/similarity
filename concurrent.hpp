@@ -12,7 +12,7 @@ namespace sm {
 
 
   template <typename T>
-  Thread<T>::Thread(): _stopping(false), _stopped(true), _done(false){
+  Thread<T>::Thread(): _stopping(false), _stopped(true), _done(false), _wait_done(false){
 
   }
 
@@ -31,6 +31,7 @@ namespace sm {
     _jobQueue.push (_job);
     _jobCond.Signal();
     _jobLock.Release();
+    return 0;
   }
 
 
@@ -80,7 +81,9 @@ namespace sm {
   template <typename T>
   void
   Thread<T>::waitAllJobDone(){
+    
     _emptyLock.Acquire();
+    _wait_done = true;
     while (!_done) _emptyCond.Wait(_emptyLock, 3000);
     _emptyLock.Release();
     stop();
@@ -91,8 +94,7 @@ namespace sm {
   template <typename T>
   void
   Thread<T>::thread_member(){
-    int    total_time;
-    int done = 0, fail = 0;
+    int done = 0, fail = 0, unexpected = 0;
 
     SM_LOG_DEBUG ("thread started");
     while (1) {
@@ -116,10 +118,13 @@ namespace sm {
         has_newjob = true;
         _jobLock.Release();
       } else {
-        _emptyLock.Acquire();
-        _emptyCond.Signal();
-        _done = true;
-        _emptyLock.Release();
+        if (_wait_done) {
+          _emptyLock.Acquire();
+          _emptyCond.Signal();
+          
+          _done = true;
+          _emptyLock.Release();
+        }
 
         _jobCond.Wait(_jobLock, 3000);
         _jobLock.Release();
@@ -128,12 +133,14 @@ namespace sm {
       if (has_newjob) {
         //SM_LOG_TRACE ("thread %d doing job %lld", _id, j.jobid);
         int ret = doJob (j.job);
-        if (ret != 0) fail++;
-        else done++;
+        if (ret == 0) done++;
+        else if (ret == -1) fail++;
+        else unexpected++;
       }
     }
 
-    SM_LOG_NOTICE ("thread statistics [JobDone : %d] [Failed: %d]", done, fail);
+    SM_LOG_NOTICE ("thread statistics [JobDone : %d] [Failed: %d] [Unexpected: %d]", 
+                   done, fail, unexpected);
   }
 
 }

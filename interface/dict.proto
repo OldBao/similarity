@@ -1,0 +1,8 @@
+package smpb;
+
+message Dictionary {
+    required int64 version = 1;
+    repeated string words = 2;
+    optional int32 npos = 4; //features
+    optional int32 nnz = 5; //non-zero term
+};
