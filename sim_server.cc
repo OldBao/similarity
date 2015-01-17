@@ -5,6 +5,21 @@
 
 using namespace sm;
 using namespace std;
+
+static void bow_to_json(const bow_t &bow, string *ret);
+
+#define DEF_ERROR(code, message)                         \
+  const static int ERROR_CODE_##message = -code;          \
+  const static char *ERROR_MSG_##message = #message;   \
+  const static char *ERROR_JSON_##message = "{ \"error_code\" : -" #code ", \"error_message\" : \"" #message " \"}";
+
+DEF_ERROR(1, FORMAT)
+DEF_ERROR(2, DOCID)
+DEF_ERROR(3, FILTER)
+DEF_ERROR(4, RESULT)
+DEF_ERROR(5, THRESHOLD)
+
+
 typedef ub::SmartEvent<SimServerEvent> SimServerEventPtr;
 
 SimServer::SimServer(ub::NetReactor *reactor):
@@ -19,12 +34,22 @@ SimServer::~SimServer(){
 
 int
 SimServer::updateServerData(SimServerData *data) {
+  _dataLock.AcquireWrite();
+  if (_server_data == NULL) this->getready();
   _server_data = data;
+  _dataLock.Release();
+
+  SM_LOG_NOTICE ("data has upgraded to version : %" PRIu64, data->getVersion());
+  return 0;
 }
 
 int 
 SimServer::getSimilarities (bow_t *bow, uint64_t docid, float threshold, int max_result) {
-  return _server_data->getSimilarity (bow, docid, threshold, max_result);
+  int ret;
+  _dataLock.AcquireRead();
+  ret = _server_data->getSimilarity (bow, docid, threshold, max_result);
+  _dataLock.Release();
+  return ret;
 }
 
 
@@ -61,7 +86,6 @@ SimServerEvent::read_done_callback (){
   }
 
   const void *req_buf = this->get_read_buffer();
-  void *res_buf = this->get_write_buffer();
   int headlen = this->get_http_headlen();
   int bodylen = this->get_http_bodylen();
   int ret;
@@ -83,7 +107,7 @@ SimServerEvent::read_done_callback (){
 
 
   if (!docidstr) {
-    SM_LOG_WARNING ("didn't get 'docid' key in [%s]", req_buf+headlen);
+    SM_LOG_WARNING ("didn't get 'docid' key in [%s]", (char *)req_buf+headlen);
     return;
   }
 
@@ -98,9 +122,7 @@ SimServerEvent::read_done_callback (){
   server->getSimilarities (&bow, docid, 0.0, 5);
   SM_LOG_NOTICE ("getted %zu similar docs", bow.size());
 
-
   json_object *retobj = json_object_new_object();
-
   json_object *simarr = json_object_new_array ();
 
   for (size_t i = 0; i < bow.size(); i++) {
@@ -116,23 +138,29 @@ SimServerEvent::read_done_callback (){
 
   const char *retstr = json_object_get_string (retobj);
   char resheader[1024];
+  int res_header_len, res_body_len = strlen(retstr);
 
-  snprintf (resheader, 1024, 
-            "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
-            "Content-Length: %zu\r\n\r\n", strlen (retstr));
+  res_header_len = snprintf (resheader, 1024, 
+                             "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
+                             "Content-Length: %zu\r\n\r\n", strlen (retstr));
 
-  memcpy (res_buf, resheader, strlen(resheader));
-  memcpy (res_buf, retstr, strlen(retstr));
-  int writelen = strlen(resheader) + strlen(retstr);
+  void *res_buf = this->get_write_buffer(res_header_len+res_body_len);
+
+  SM_LOG_DEBUG ("max rd bufsize %d max write buf size %d", 
+                    server->get_max_readbufsize(), server->get_max_writebufsize());
+
+  memcpy (res_buf, resheader, res_header_len);
+  memcpy (res_buf+res_header_len, retstr, res_body_len);
+  SM_LOG_DEBUG ("retstr :%d-%d: %s", res_header_len, res_body_len, (char *)res_buf);
   //TODO free memory ;-)
-
-  awrite(writelen);
+  
+  awrite(res_header_len + res_body_len);
 }
 
 void
 SimServerEvent::event_error_callback (){
-  SM_LOG_WARNING ("read error [%d]", this->get_sock_status());
-
+  UBEVENT_TRACE(this,"SimServerEvent(read_done_callback) event error(0x%X)[%s]", this->get_sock_status(),
+                status_to_string(get_sock_status()).c_str());
   _fserver->session_done(this);
   return;
 }
@@ -141,27 +169,54 @@ SimServerEvent::event_error_callback (){
 SM_IMP_SINGLETON (SimServerDataManager)
 
 SimServerDataManager::~SimServerDataManager(){
-
 }
 
 int
 SimServerDataManager::init (const string& basepath) {
+  _basepath = basepath;
+  _local_version = 0; //TODO check dir
 
-  //TODO get newest version
-  SimServerData *data = new SimServerData(0);
-  
-  if (0 != data->load (basepath)){
-    delete data;
-    return -1;
-  }
-
-  _datas[0] = data;
   return 0;
 }
 
+
+int
+SimServerDataManager::checkVersion(){
+  uint64_t remote_version = 0; // TODO get version from remote
+
+  SM_LOG_NOTICE ("check trainer version %" PRIu64 " : localversion is %" PRIu64
+                 , remote_version, _local_version);
+
+  if (remote_version >= _local_version) { //TODO change this to >
+    //TODO sync remote version to local
+    if (_datas.find(_local_version) != _datas.end())
+      return 0;
+
+
+    SimServerData *data = new SimServerData(remote_version);
+    if (0 != data->load (_basepath)){
+      delete data;
+      return -1;
+    }
+    
+    _datas[remote_version] = data;
+    for (std::vector <SimServer *>::iterator iter = _servers.begin();
+         iter != _servers.end();
+         iter++)
+      {
+        (*iter)->updateServerData(data);
+      }
+    return remote_version+1;
+  }
+
+  return 0;
+}
+
+
 int
 SimServerDataManager::registerSimServer(SimServer *server) {
-  return server->updateServerData (_datas[0]);
+  _servers.push_back (server);
+  return 0;
 }
 
 
@@ -181,6 +236,13 @@ SimServerData::getSimilarity(bow_t *bow, uint64_t docid, float threshold, int ma
   int id = _corpus->getIdFromDocid (docid);
   return _sim->getSimilarities(bow, id, threshold, max);
 }
+
+
+uint64_t
+SimServerData::getVersion(){
+  return _version;
+}
+
 
 int
 SimServerData::load(const string &path) {

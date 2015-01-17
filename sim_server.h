@@ -26,6 +26,7 @@ namespace sm {
   public :
     SimServerData(uint64_t version);
     int load(const std::string& path);
+    uint64_t getVersion();
     ~SimServerData();
 
     int getSimilarity(bow_t *bow, uint64_t docid, float threshold, int max_result);
@@ -53,6 +54,7 @@ namespace sm {
     void on_accept (ub::UbEvent *event);
   private:
     SimServerData *_server_data;
+    RWLock _dataLock;
   };
 
   class SimServerDataManager {
@@ -62,10 +64,12 @@ namespace sm {
     int init(const std::string &basepath);
     int registerSimServer(SimServer *server);
 
-    int check_version();
+    int checkVersion();
     int force_update (uint64_t version = -1); //update to newest
 
   private:
+    std::string _basepath;
+    uint64_t _local_version;
     std::map<uint64_t, SimServerData *> _datas;
     std::vector<SimServer *> _servers;
   };

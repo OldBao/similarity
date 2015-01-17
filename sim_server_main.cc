@@ -1,7 +1,17 @@
+#include "ub.h"
 #include "sim_server.h"
 #include "log.h"
 
 using namespace sm;
+
+comcfg::Configure conf;
+
+static
+int check(void *){
+  SimServerDataManager::getInstance()->checkVersion ();
+  
+  return 0;
+}
 
 int
 main(int argc, char **argv) {
@@ -16,7 +26,6 @@ main(int argc, char **argv) {
     return -1;
   }
 
-  comcfg::Configure conf;
   if (0 != conf.load ("./conf", "sim_server.conf")) {
     SM_LOG_FATAL ("open configure failed");
     return -1;
@@ -27,8 +36,7 @@ main(int argc, char **argv) {
     SM_LOG_FATAL ("load reactor failed");
     return -1;
   }
-
-  reactor->run ();
+  reactor->run();
 
   SimServer *simserver = new SimServer (reactor);
   if (simserver->load (conf["server"]["sim"]) != 0) {
@@ -37,15 +45,12 @@ main(int argc, char **argv) {
     return -1;
   }
 
-  //simserver->set_sock_opt (UBSVR_)
-  
   SimServerDataManager::getInstance()->registerSimServer (simserver);
-  
-  simserver->getready ();
+  ub_timer_task_t *timer = ub_create_timer_task();
+  ub_add_timer_task(timer, check, NULL, 3000);
+  ub_run_timer_task(timer);
+  ub_join_timer_task(timer);
+  ub_destroy_timer_task(timer);
   reactor->join();
-
-  delete simserver;
-  delete reactor;
-
   return 0;
 }
