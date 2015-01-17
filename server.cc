@@ -1,9 +1,10 @@
-
 #include <iostream>
 #include <fstream>
 #include <signal.h>
 #include "repo.h"
 #include "segment.h"
+#include "model.h"
+
 using namespace std;
 using namespace sm;
 
@@ -14,11 +15,12 @@ main(int argc, char **argv){
   logstat.events = 4;
   logstat.spec= 0;
   ul_openlog("./log", "junk", &logstat, 1024);
-  if (argc != 3) {
-    cout << "./server url path" << endl;
+  if (argc != 4) {
+    cout << "./server url path count" << endl;
     return 0;
   }
 
+  int max = atoi(argv[3]);
   fstream is(argv[1], ios::in);
   int i;
 
@@ -27,19 +29,15 @@ main(int argc, char **argv){
     return -1;
   }
 
-  Repository repo("doccache", "conf/online", "mola.conf");
-  if (0 != repo.open()){
-    cout << "open repo error " << endl;
-    return -1;
-  }
+  Repository repo(12, "doccache");
 
   i = 0;
   while (1) {
     i++;
     if (i % 1000 == 0) {
-      break;
       sleep (10);
     }
+    if (i == max) break;
     string url;
     is >> url;
     if (is.eof()) break;
@@ -47,13 +45,10 @@ main(int argc, char **argv){
   }
 
   repo.waitAllJobDone();
-  /*
-  cout << "begin calculate tfidf" << endl;
-  repo.tfidf();
-  
-  cout << "calculate done" << endl;
-  */
   repo.save (argv[2]);
 
+  LDAModel ldaModel (&repo.corpus(), &repo.dict());
+  ldaModel.train();
+  ldaModel.save(argv[2], "similarity");
   return 0;
 }

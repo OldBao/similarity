@@ -213,8 +213,11 @@ Dictionary::save(const std::string& path, const std::string &basename, const std
   smpb::Dictionary serial_dict;
 
   for (size_t i = 0; i < _words.size(); i++) {
-    string *buffer = serial_dict.add_words();
-    assert ( 0 == w(_words[i], buffer));
+    string buffer;
+    smpb::Word *word = serial_dict.add_words();
+    assert ( 0 == w(_words[i], &buffer));
+    word->set_content(buffer);
+    word->set_dfs(_dfs[i]);
   }
 
   serial_dict.set_nnz(_nnz);
@@ -259,8 +262,11 @@ Dictionary::load (const std::string &path, const std::string &base) {
   }
   
   for (int i = 0; i < deserial_dict.words_size(); i++) {
+    const smpb::Word &word = deserial_dict.words(i);
     wstring buffer;
-    encoding_utf8_to_wchar(deserial_dict.words(i), &buffer);
+    encoding_utf8_to_wchar(word.content(), &buffer);
+    if (word.has_dfs())
+      _dfs.push_back (word.dfs());
     _words.push_back (buffer);
     _wordmap[buffer] = i;
   }

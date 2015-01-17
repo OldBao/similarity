@@ -10,8 +10,9 @@ using namespace sm;
 SimCalculator::SimCalculator(TopicSimilarity *sim) : _sim(sim){}
 SimCalculator::~SimCalculator() {}
 
-int SimCalculator::doJob (int64_t* const &id) {
-  _sim->doJob((int64_t)id);
+int SimCalculator::doJob (const int64_t &id) {
+  _sim->doJob(id);
+  return 0;
 }
 
 TopicSimilarity::TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, int maxSim) : 
@@ -75,8 +76,6 @@ TopicSimilarity::_cal_within_topics(const vector<int> &topics) {
   int an = all.size();
   if (an == 0) return 0;
 
-  SM_LOG_DEBUG ( "[%d] docs in this series topic", all.size() );
-  
   for (int i = 0 ; i < an; i++) {
     const bow_t& src = _corpus->at(all[i]);
     for (int j = i+1; j < an; j++) {
@@ -92,18 +91,6 @@ TopicSimilarity::_cal_within_topics(const vector<int> &topics) {
     }
   }
 
-  for (int i = 0; i < an; i++) {
-    //TODO delete this
-    stringstream tmp;
-    tmp << "Sim of [ " << all[i]  << "]:  ";
-    _sims[ all[i] ].sort();
-
-    for (int j = 0; j < _sims[ all[i] ].size(); j++) {
-      tmp << "[" << _sims[all[i]][j].id << ":" << _sims[ all[i] ][j].weight << "]";
-    }
-    SM_LOG_DEBUG ("%s", tmp.str().c_str());
-  }
-  
   return 0;
 }
 
@@ -116,11 +103,7 @@ int
 TopicSimilarity::calculate(int64_t topicid){
   _sims.resize (_corpus->size());
   
-  // this is a little trick
-  // because i want implement "auto delete", but 'delete int' is invalid
-  // so i just send this scala as integer
-  // the best choice is use type_trait, but it's seems too complicated ;-(
-  this->_calculators[topicid%THREAD_COUNT]->addJob ((int64_t *) topicid);
+  this->_calculators[topicid%THREAD_COUNT]->addJob (topicid);
   return 0;
 }
 
@@ -132,6 +115,7 @@ TopicSimilarity::getSimilarities (bow_t *ret, int id, double sim_threshold, int 
   SM_CHECK_RET_ERR (ret->size() == 0, "return container should be empty");
 
   const bow_t &src = _sims[id];
+  _sims[id].sort();
 
   for (int i = 0; i < src.size(); i++) {
     const bow_unit_t u = src[i];

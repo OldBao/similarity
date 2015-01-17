@@ -74,7 +74,7 @@ namespace sm {
 
   class LDAModel : public TopicModel {
   public:
-    LDAModel (Corpus *corpus, Dictionary *dict, int version = 0);
+    LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version = 0);
     virtual ~LDAModel ();
     
     int train();
@@ -108,7 +108,8 @@ namespace sm {
     float _em_converged;
     int _max_alpha_iter;
     double _newton_threshold;
-    int _ntopics, _nterms, _ndocs, _version;
+    int _ntopics, _ndocs, _nterms;
+    uint64_t _version;
     double **_log_prob_w;
     double **_var_gamma;
     double **_phi;

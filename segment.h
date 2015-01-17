@@ -10,7 +10,7 @@
 namespace sm{
 
   class Segment {
-    SM_DECLARE_SINGLETON(Segment, const char*);
+    SM_DECLARE_SINGLETON(Segment);
 
  public:
     int load (const std::string &path,

@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/gzip_stream.h>
 #include <fstream>
@@ -28,6 +29,9 @@ Corpus::addDoc( uint64_t docid, const bow_t &bow ) {
   _docsLock.Release();
 
   _docmapLock.AcquireWrite();
+  SM_LOG_DEBUG ("Adding docid %" PRIu64 " to map", docid);
+  SM_ASSERT (_docmap.find(docid) == _docmap.end(), "docid " PRIu64 " should not add twice", docid);
+
   _docmap[docid] = newid;
   _docmapLock.Release();
   
@@ -120,7 +124,7 @@ Corpus::save(const std::string& path, const std::string &basename){
     smpb::Doc *serial_doc = serial_corpus.add_docs();
     smpb::Bow *serial_bow = serial_doc->mutable_bow();
     const bow_t& doc = _docs[i];
-    serial_doc->set_docid(_docmap[i]);
+    serial_doc->set_docid(_docids[i]);
 
     if (doc.total() != NAN) {
       serial_bow->set_total(doc.total());      
@@ -152,8 +156,8 @@ Corpus::load(const std::string &path, const std::string &basename){
   
   snprintf (fullpath, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
   ifstream is(fullpath);
-  if (is.is_open()) {
-    SM_LOG_WARNING ("OPEN file [%s] for reading error", fullpath);
+  if (!is.is_open()) {
+    SM_LOG_WARNING ("load file [%s] for reading error", fullpath);
     return -1;
   }
 
@@ -188,12 +192,12 @@ Corpus::load(const std::string &path, const std::string &basename){
     }
 
     if (dbow.has_total()) {
-      bow.setTotal (bow.total());
+      bow.setTotal (dbow.total());
     } else {
       bow._cal_total();
     }
     if (dbow.norm()) {
-      bow.setNorm (bow.norm());
+      bow.setNorm (dbow.norm());
     } else {
       bow._cal_norm();
     }
@@ -213,10 +217,18 @@ Corpus::load(const std::string &path, const std::string &basename){
   return 0;
 }
 
+int
+Corpus::getIdFromDocid(uint64_t docid) {
+  int id;
+  _docmapLock.AcquireRead ();
+  id = _docmap[docid];
+  _docmapLock.Release();
+  return id;
+}
+
 
 uint64_t
 Corpus::getDocid(size_t id) const{
-
   Corpus *c = const_cast <Corpus *> (this);
   uint64_t docid;
   c->_docsLock.AcquireRead();
@@ -224,8 +236,9 @@ Corpus::getDocid(size_t id) const{
   docid = _docids[id];
   c->_docsLock.Release();
   return docid;
-  
 }
+
+
 static int getMaxIdFromBow (const bow_t & bow) {
   int max = -1;
   for (size_t i = 0; i < bow.size(); i++) {

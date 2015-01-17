@@ -78,13 +78,12 @@ namespace sm {
     virtual void waitAllJobDone();
     void thread_member();
   private:
-    bool _stopping, _stopped, _wait_done;
+    bool _stopping, _stopped, _done, _wait_done;
     pthread_t _td;
     std::priority_queue< _internal_Job <T> > _jobQueue;
     Lock _cmdLock, _jobLock, _emptyLock;
     Cond _jobCond, _emptyCond;
 
-    bool _done;
   };
 
 };

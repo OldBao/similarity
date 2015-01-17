@@ -3,7 +3,7 @@
 
 #include "concurrent.h"
 
-#define SM_DECLARE_SINGLETON(clz, para)           \
+#define SM_DECLARE_SINGLETON(clz)                 \
   private:                                        \
  virtual ~clz();                                  \
  clz();                                           \

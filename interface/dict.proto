@@ -1,8 +1,14 @@
 package smpb;
 
+message Word {
+    required string content = 1;
+    optional int32 dfs = 2; //document frequency
+};
+
 message Dictionary {
     required int64 version = 1;
-    repeated string words = 2;
+    repeated Word words = 2;
+
     optional int32 npos = 4; //features
     optional int32 nnz = 5; //non-zero term
 };

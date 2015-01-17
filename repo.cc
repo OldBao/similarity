@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <fstream>
 #include <iostream>
 #include <json/json.h>
@@ -12,13 +13,19 @@ using namespace sm;
 
 const uint64_t ACCEPT = SM_TOKEN_TYPE_DEFAULT | SM_TOKEN_TYPE_VERB | SM_TOKEN_TYPE_VD | SM_TOKEN_TYPE_VN;
 
-Repository::Repository(const std::string &local, 
-                       const std::string &mola_conf_path, 
-                       const std::string &mola_conf_file, 
-                       int nworkers)
-  : _localpath(local), _mola_path(mola_conf_path), _mola_file (mola_conf_file)
+static uint64_t _sign_doc (const std::string &doc) {
+  uint64_t sign = 0;
+  creat_sign_fs64( (char *)doc.data(), (int) doc.size(),
+                   (uint32_t *) (&sign), (uint32_t *) (&sign) + 1);
+  return sign;
+}
+
+
+
+Repository::Repository(int nworkers, const std::string &local)
+  : _localpath(local)
 {
-  SM_ASSERT (nworkers < 12 * 1.5, "i suggest you to open at most [%d] workers", 12*1.5);
+  SM_ASSERT (nworkers < 12 * 1.5, "i suggest you to open at most [%lf] workers", 12*1.5);
 
   for (int i = 0; i < nworkers; i++) {
     RepositoryWorker *worker = new RepositoryWorker(this);
@@ -32,12 +39,6 @@ Repository::~Repository(){
   for (size_t i = 0; i < _workers.size(); i++) {
     delete _workers[i];
   }
-}
-
-
-int
-Repository::open(){
-  return 0;
 }
 
 
@@ -55,6 +56,7 @@ Repository::waitAllJobDone(){
 int
 Repository::addUrl (const std::string& url) {
   _workers[random() % _workers.size()]->addJob(url + "|topic");
+  return 0;
 }
 
 int
@@ -66,18 +68,19 @@ Repository::addUrls (const vector<string> &urls) {
       _workers[random() % _workers.size()]->addJob(*iter + "|topic");
     }
 
+  return 0;
 }
 
+/*
 int
 Repository::doJob (const string &values) {
   json_tokener *tokener = json_tokener_new();
   json_object *obj = json_tokener_parse_ex (tokener, values.c_str(), values.size());
   vector< pair<string, double> > doc;
   uint64_t docid;
-  int corpusid;
   bow_t bow;
 
-  if (!obj) {
+  if (!obj || !json_object_is_type(obj, json_type_object)) {
     SM_LOG_NOTICE ("json parse error : %s in %d", 
                    json_tokener_errors[tokener->err],
                    tokener->char_offset);
@@ -112,14 +115,12 @@ Repository::doJob (const string &values) {
   }
 
   if (bow.size() == 0) {
-    SM_LOG_DEBUG ("didn't get any words in %llu", docid);
+    SM_LOG_DEBUG ("didn't get any words in %lu", docid);
     return -2;
   }
   bow.pre_handle();
   _corpus.addDoc(docid, bow);
   
-  SM_LOG_DEBUG ("add [%d:%lu] to corpus", corpusid, docid);
-
   json_tokener_free(tokener);
   return 0;
 
@@ -127,18 +128,22 @@ Repository::doJob (const string &values) {
   json_tokener_free(tokener);
   return -1;
 }
+*/
 
-/*
 int
 Repository::doJob(const string &values) {
   json_tokener *tokener = json_tokener_new();
-  const char *content = NULL,  *title = NULL, *docid = NULL;
-
+  const char *content = NULL,  *title = NULL, *docidstr;
+  bow_t bow;
+  uint64_t docid = -1;
+  int ret;
+  
   json_object *obj = json_tokener_parse_ex (tokener, values.c_str(), values.size());
   if (!obj) {
     SM_LOG_NOTICE ("json parse error : %s in %d", 
                    json_tokener_errors[tokener->err],
                    tokener->char_offset);
+    json_tokener_free(tokener);
     return -1;
   }
 
@@ -146,46 +151,47 @@ Repository::doJob(const string &values) {
     if (!strcmp (key, "article")) {
       content = json_object_get_string (value);
     } else if (!strcmp (key, "docid")) {
-      docid = json_object_get_string (value);
+      docidstr = json_object_get_string (value);
     } else if (!strcmp (key, "title")){
       title = json_object_get_string (value);
     }
   }
 
-  SM_CHECK_RET_ERR (content && docid && title, "can't get keys");
-  uint64_t id =  strtoull(docid, NULL, 10);
-  Document doc(content, title, id);
-  if (0 != doc.analysis(ACCEPT)) {
-    SM_LOG_NOTICE ("analysis error");
-    return -1;
+
+  if (!content || !title || !docidstr) {
+     SM_LOG_WARNING ("can't get keys of content or title");
+     json_tokener_free(tokener);
+     return -1;
   }
 
-  bow_t bow;
+  ret =  sscanf (docidstr, "%" PRIu64, &docid);
+  if (ret != 1) {
+     SM_LOG_WARNING ("docid invalid");
+     json_tokener_free(tokener);
+     return -1;
+  }
+
+  Document doc(content, title, docid);
+  if (0 != doc.analysis(ACCEPT)) {
+    SM_LOG_NOTICE ("analysis error");
+    goto error;
+  }
+
+
   _dict.doc2bow (&bow, doc, true);
   bow.pre_handle();
   if (bow.size() == 0) {
-    SM_LOG_DEBUG ("didn't get any words in %s: [contents:%s]", docid, values.c_str());
-    doc.analysis(ACCEPT);
-    _dict.doc2bow (&bow, doc, true);
-    return -2;
+    SM_LOG_DEBUG ("didn't get any words in %lu: [contents:%s]", docid, values.c_str());
+    goto error;
   }
-  int corpusid = _corpus.addDoc(bow);
+  _corpus.addDoc(docid, bow);
   
-  _docmapLock.Acquire();
-  _docmap[corpusid] = id;
-  _docmapLock.Release();
-  
-  SM_LOG_DEBUG ("add [%d:%lu] to corpus", corpusid, id);
+  json_tokener_free(tokener);
 
   return 0;
-}
-*/
-
-uint64_t
-Repository::_sign_doc (const std::string &doc) {
-  uint64_t sign = 0;
-  creat_sign_fs64((char *)doc.c_str(), (int) doc.size(),                   (uint32_t *) (&sign), (uint32_t *) (&sign) + 1);
-  return sign;
+ error:
+  json_tokener_free(tokener);
+  return -1;
 }
 
 
@@ -199,21 +205,24 @@ RepositoryWorker::~RepositoryWorker(){
 int
 RepositoryWorker::doJob (const string &job) {
   string content;
-  int ret;
-  if ( 0 == client.get(job, &content) ) {
-    if (content.empty()) {
-      SM_LOG_NOTICE ("get empty content from url [%s]", job.c_str());
+
+  uint64_t docid = _sign_doc (job);
+  if (0 != _read_from_local(docid, &content))  {
+    if ( 0 != client.get(job, &content) )  {
+      SM_LOG_WARNING ("get content %s error", job.c_str());
       return -1;
+    } else {
+       _save_to_local(docid, content); 
     }
-    if (0 != (ret = _repo->doJob(content))){
-      return ret;
-    }
-  } else {
-    SM_LOG_WARNING ("get content %s error", job.c_str());
+  }
+
+
+  if (content.empty()) {
+    SM_LOG_NOTICE ("get empty content from url [%s]", job.c_str());
     return -1;
   }
-  
-  return 0;
+
+  return _repo->doJob(content);
 }
 
 int
@@ -253,4 +262,51 @@ Repository::save(const std::string &basepath) {
     SM_LOG_WARNING ("save corpus error");
     return -1;
   }
+
+  return 0;
+}
+
+
+int
+RepositoryWorker::_read_from_local(uint64_t id, string *content){
+  if (_repo->getLocalCachePath().empty()) return -1;
+  char fullpath[PATH_MAX];
+  snprintf (fullpath, PATH_MAX, "%s/%" PRIu64, _repo->getLocalCachePath().c_str(), id);
+
+  struct stat statbuf;
+  if (-1 == stat (fullpath, &statbuf)){
+    return -1;
+  }
+
+  if (S_ISREG(statbuf.st_mode)) {
+    ifstream is(fullpath);
+    if (is.is_open()) {
+      is.seekg(0, ios::end);
+      ifstream::pos_type pos = is.tellg();
+      char *buffer = (char *) malloc (pos);
+      bzero (buffer, pos);
+      is.seekg(0, ios::beg);
+      is.read (buffer, pos);
+      content->assign (buffer, pos);
+      free (buffer);
+      return 0;
+    }
+  }
+
+  return -1;
+}
+
+int
+RepositoryWorker::_save_to_local(uint64_t id, const string& content) {
+  if (_repo->getLocalCachePath().empty()) return -1;
+
+  char fullpath[PATH_MAX];
+  snprintf (fullpath, PATH_MAX, "%s/%" PRIu64, _repo->getLocalCachePath().c_str(), id);
+
+  ofstream os(fullpath);
+  if (!os.is_open()) return -1;
+
+  os.write(content.data(), content.size());
+
+  return 0;
 }

@@ -13,12 +13,21 @@ CXXFLAGS=-g \
 CFLAGS=
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
+  -D__STDC_FORMAT_MACROS \
   -DVERSION=\"1.0.0.0\"
 INCPATH=-I. \
   -I./include \
   -I./output \
   -I./output/include
-DEP_INCPATH=-I../../../../../../lib2-64/ccode \
+DEP_INCPATH=-I../../../../../../com/idlcompiler \
+  -I../../../../../../com/idlcompiler/include \
+  -I../../../../../../com/idlcompiler/output \
+  -I../../../../../../com/idlcompiler/output/include \
+  -I../../../../../../lib2-64/bsl \
+  -I../../../../../../lib2-64/bsl/include \
+  -I../../../../../../lib2-64/bsl/output \
+  -I../../../../../../lib2-64/bsl/output/include \
+  -I../../../../../../lib2-64/ccode \
   -I../../../../../../lib2-64/ccode/include \
   -I../../../../../../lib2-64/ccode/output \
   -I../../../../../../lib2-64/ccode/output/include \
@@ -46,6 +55,34 @@ DEP_INCPATH=-I../../../../../../lib2-64/ccode \
   -I../../../../../../lib2-64/wordseg/include \
   -I../../../../../../lib2-64/wordseg/output \
   -I../../../../../../lib2-64/wordseg/output/include \
+  -I../../../../../../op/oped/noah/webfoot/naming-lib \
+  -I../../../../../../op/oped/noah/webfoot/naming-lib/include \
+  -I../../../../../../op/oped/noah/webfoot/naming-lib/output \
+  -I../../../../../../op/oped/noah/webfoot/naming-lib/output/include \
+  -I../../../../../../public/bslext \
+  -I../../../../../../public/bslext/include \
+  -I../../../../../../public/bslext/output \
+  -I../../../../../../public/bslext/output/include \
+  -I../../../../../../public/comlog-plugin \
+  -I../../../../../../public/comlog-plugin/include \
+  -I../../../../../../public/comlog-plugin/output \
+  -I../../../../../../public/comlog-plugin/output/include \
+  -I../../../../../../public/configure \
+  -I../../../../../../public/configure/include \
+  -I../../../../../../public/configure/output \
+  -I../../../../../../public/configure/output/include \
+  -I../../../../../../public/connectpool \
+  -I../../../../../../public/connectpool/include \
+  -I../../../../../../public/connectpool/output \
+  -I../../../../../../public/connectpool/output/include \
+  -I../../../../../../public/idlcompiler \
+  -I../../../../../../public/idlcompiler/include \
+  -I../../../../../../public/idlcompiler/output \
+  -I../../../../../../public/idlcompiler/output/include \
+  -I../../../../../../public/mcpack \
+  -I../../../../../../public/mcpack/include \
+  -I../../../../../../public/mcpack/output \
+  -I../../../../../../public/mcpack/output/include \
   -I../../../../../../public/nshead \
   -I../../../../../../public/nshead/include \
   -I../../../../../../public/nshead/output \
@@ -54,6 +91,18 @@ DEP_INCPATH=-I../../../../../../lib2-64/ccode \
   -I../../../../../../public/odict/include \
   -I../../../../../../public/odict/output \
   -I../../../../../../public/odict/output/include \
+  -I../../../../../../public/spreg \
+  -I../../../../../../public/spreg/include \
+  -I../../../../../../public/spreg/output \
+  -I../../../../../../public/spreg/output/include \
+  -I../../../../../../public/ub \
+  -I../../../../../../public/ub/include \
+  -I../../../../../../public/ub/output \
+  -I../../../../../../public/ub/output/include \
+  -I../../../../../../public/uconv \
+  -I../../../../../../public/uconv/include \
+  -I../../../../../../public/uconv/output \
+  -I../../../../../../public/uconv/output/include \
   -I../../../../../../third-64/gtest \
   -I../../../../../../third-64/gtest/include \
   -I../../../../../../third-64/gtest/output \
@@ -62,6 +111,10 @@ DEP_INCPATH=-I../../../../../../lib2-64/ccode \
   -I../../../../../../third-64/json-c/include \
   -I../../../../../../third-64/json-c/output \
   -I../../../../../../third-64/json-c/output/include \
+  -I../../../../../../third-64/pcre \
+  -I../../../../../../third-64/pcre/include \
+  -I../../../../../../third-64/pcre/output \
+  -I../../../../../../third-64/pcre/output/include \
   -I../../../../../../third-64/protobuf \
   -I../../../../../../third-64/protobuf/include \
   -I../../../../../../third-64/protobuf/output \
@@ -81,11 +134,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=ce177675aa53570613d8a944c59e825e  COMAKE
+COMAKE_MD5=973b0f795da2fa13cd9dc6baedfd2b7a  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check libsimilarity.a train sim server test 
+all:comake2_makefile_check libsimilarity.a simserver server test 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -116,10 +169,9 @@ clean:ccpclean
 	rm -rf ./output/include/model.h
 	rm -rf ./output/include/concurrent.h
 	rm -rf ./output/include/kvproxy_client.h
-	rm -rf train
-	rm -rf ./output/bin/train
-	rm -rf sim
-	rm -rf ./output/bin/sim
+	rm -rf ./output/include/sim_server.h
+	rm -rf simserver
+	rm -rf ./output/bin/simserver
 	rm -rf server
 	rm -rf ./output/bin/server
 	$(MAKE) -C test clean
@@ -150,8 +202,8 @@ clean:ccpclean
 	rm -rf interface/lda.pb.cc
 	rm -rf interface/lda.pb.h
 	rm -rf interface/similarity_lda.pb.o
-	rm -rf train_main.o
-	rm -rf sim_sim_main.o
+	rm -rf simserver_sim_server.o
+	rm -rf simserver_sim_server_main.o
 	rm -rf server_server.o
 
 .PHONY:dist
@@ -198,7 +250,8 @@ libsimilarity.a:similarity_dictionary.o \
   corpus.h \
   model.h \
   concurrent.h \
-  kvproxy_client.h
+  kvproxy_client.h \
+  sim_server.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_dictionary.o \
   similarity_segment.o \
@@ -222,73 +275,144 @@ libsimilarity.a:similarity_dictionary.o \
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
-	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h ./output/include
 
-train:train_main.o \
+simserver:simserver_sim_server.o \
+  simserver_sim_server_main.o \
   -lsimilarity
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain[0m']"
-	$(CXX) train_main.o -Xlinker "-(" -lsimilarity ../../../../../../lib2-64/ccode/lib/libulccode.a \
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver[0m']"
+	$(CXX) simserver_sim_server.o \
+  simserver_sim_server_main.o -Xlinker "-(" -lsimilarity ../../../../../../com/idlcompiler/astyle/libastyle.a \
+  ../../../../../../com/idlcompiler/cxx/libskeleton.a \
+  ../../../../../../com/idlcompiler/java/libjava_skeleton.a \
+  ../../../../../../com/idlcompiler/parser/libparser.a \
+  ../../../../../../com/idlcompiler/php/libphp_skeleton.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_ResourcePool.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_archive.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_buffer.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_check_cast.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_exception.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_pool.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_utils.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var_implement.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var_utils.a \
+  ../../../../../../lib2-64/ccode/lib/libulccode.a \
   ../../../../../../lib2-64/dict/lib/libuldict.a \
   ../../../../../../lib2-64/libcrf/lib/libcrf.a \
   ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
   ../../../../../../lib2-64/postag/lib/libpostag.a \
   ../../../../../../lib2-64/ullib/lib/libullib.a \
   ../../../../../../lib2-64/wordseg/libsegment.a \
+  ../../../../../../op/oped/noah/webfoot/naming-lib/output/lib/libwebfoot_naming.a \
+  ../../../../../../public/bslext/output/lib/libbsl_bml.a \
+  ../../../../../../public/bslext/output/lib/libbsl_containers_utils.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_scripting.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_serializer.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_vscript.a \
+  ../../../../../../public/bslext/output/lib/libbsl_vs.a \
+  ../../../../../../public/bslext/output/lib/libbslext.a \
+  ../../../../../../public/comlog-plugin/libcomlog.a \
+  ../../../../../../public/comlog-plugin/output/lib/libdfsappender.a \
+  ../../../../../../public/configure/libconfig.a \
+  ../../../../../../public/connectpool/libconnectpool.a \
+  ../../../../../../public/idlcompiler/output/lib/libmcpack_idl.a \
+  ../../../../../../public/mcpack/libmcpack.a \
   ../../../../../../public/nshead/libnshead.a \
   ../../../../../../public/odict/libodict.a \
+  ../../../../../../public/spreg/libspreg.a \
+  ../../../../../../public/ub/output/lib/libub.a \
+  ../../../../../../public/ub/output/lib/libub_aserver.a \
+  ../../../../../../public/ub/output/lib/libub_client.a \
+  ../../../../../../public/ub/output/lib/libub_conf.a \
+  ../../../../../../public/ub/output/lib/libub_galileo.a \
+  ../../../../../../public/ub/output/lib/libub_log.a \
+  ../../../../../../public/ub/output/lib/libub_misc.a \
+  ../../../../../../public/ub/output/lib/libub_monitor.a \
+  ../../../../../../public/ub/output/lib/libub_naming.a \
+  ../../../../../../public/ub/output/lib/libub_server.a \
+  ../../../../../../public/ub/output/lib/libubex.a \
+  ../../../../../../public/ub/output/lib/libubfw.a \
+  ../../../../../../public/uconv/libuconv.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
   ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/pcre/lib/libpcre.a \
+  ../../../../../../third-64/pcre/lib/libpcrecpp.a \
+  ../../../../../../third-64/pcre/lib/libpcreposix.a \
   ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
   ../../../../../../third-64/protobuf/lib/libprotobuf.a \
   ../../../../../../third-64/protobuf/lib/libprotoc.a \
   ../../../../../../third-64/zlib/lib/libz.a -lpthread \
   -lcrypto \
   -lrt \
-  -L. -Xlinker "-)" -o train
+  -L. -Xlinker "-)" -o simserver
 	mkdir -p ./output/bin
-	cp -f --link train ./output/bin
-
-sim:sim_sim_main.o \
-  -lsimilarity
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim[0m']"
-	$(CXX) sim_sim_main.o -Xlinker "-(" -lsimilarity ../../../../../../lib2-64/ccode/lib/libulccode.a \
-  ../../../../../../lib2-64/dict/lib/libuldict.a \
-  ../../../../../../lib2-64/libcrf/lib/libcrf.a \
-  ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
-  ../../../../../../lib2-64/postag/lib/libpostag.a \
-  ../../../../../../lib2-64/ullib/lib/libullib.a \
-  ../../../../../../lib2-64/wordseg/libsegment.a \
-  ../../../../../../public/nshead/libnshead.a \
-  ../../../../../../public/odict/libodict.a \
-  ../../../../../../third-64/gtest/lib/libgtest.a \
-  ../../../../../../third-64/gtest/lib/libgtest_main.a \
-  ../../../../../../third-64/json-c/lib/libjson.a \
-  ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
-  ../../../../../../third-64/protobuf/lib/libprotobuf.a \
-  ../../../../../../third-64/protobuf/lib/libprotoc.a \
-  ../../../../../../third-64/zlib/lib/libz.a -lpthread \
-  -lcrypto \
-  -lrt \
-  -L. -Xlinker "-)" -o sim
-	mkdir -p ./output/bin
-	cp -f --link sim ./output/bin
+	cp -f --link simserver ./output/bin
 
 server:server_server.o \
   -lsimilarity
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver[0m']"
-	$(CXX) server_server.o -Xlinker "-(" -lsimilarity ../../../../../../lib2-64/ccode/lib/libulccode.a \
+	$(CXX) server_server.o -Xlinker "-(" -lsimilarity ../../../../../../com/idlcompiler/astyle/libastyle.a \
+  ../../../../../../com/idlcompiler/cxx/libskeleton.a \
+  ../../../../../../com/idlcompiler/java/libjava_skeleton.a \
+  ../../../../../../com/idlcompiler/parser/libparser.a \
+  ../../../../../../com/idlcompiler/php/libphp_skeleton.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_ResourcePool.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_archive.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_buffer.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_check_cast.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_exception.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_pool.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_utils.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var_implement.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var_utils.a \
+  ../../../../../../lib2-64/ccode/lib/libulccode.a \
   ../../../../../../lib2-64/dict/lib/libuldict.a \
   ../../../../../../lib2-64/libcrf/lib/libcrf.a \
   ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
   ../../../../../../lib2-64/postag/lib/libpostag.a \
   ../../../../../../lib2-64/ullib/lib/libullib.a \
   ../../../../../../lib2-64/wordseg/libsegment.a \
+  ../../../../../../op/oped/noah/webfoot/naming-lib/output/lib/libwebfoot_naming.a \
+  ../../../../../../public/bslext/output/lib/libbsl_bml.a \
+  ../../../../../../public/bslext/output/lib/libbsl_containers_utils.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_scripting.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_serializer.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_vscript.a \
+  ../../../../../../public/bslext/output/lib/libbsl_vs.a \
+  ../../../../../../public/bslext/output/lib/libbslext.a \
+  ../../../../../../public/comlog-plugin/libcomlog.a \
+  ../../../../../../public/comlog-plugin/output/lib/libdfsappender.a \
+  ../../../../../../public/configure/libconfig.a \
+  ../../../../../../public/connectpool/libconnectpool.a \
+  ../../../../../../public/idlcompiler/output/lib/libmcpack_idl.a \
+  ../../../../../../public/mcpack/libmcpack.a \
   ../../../../../../public/nshead/libnshead.a \
   ../../../../../../public/odict/libodict.a \
+  ../../../../../../public/spreg/libspreg.a \
+  ../../../../../../public/ub/output/lib/libub.a \
+  ../../../../../../public/ub/output/lib/libub_aserver.a \
+  ../../../../../../public/ub/output/lib/libub_client.a \
+  ../../../../../../public/ub/output/lib/libub_conf.a \
+  ../../../../../../public/ub/output/lib/libub_galileo.a \
+  ../../../../../../public/ub/output/lib/libub_log.a \
+  ../../../../../../public/ub/output/lib/libub_misc.a \
+  ../../../../../../public/ub/output/lib/libub_monitor.a \
+  ../../../../../../public/ub/output/lib/libub_naming.a \
+  ../../../../../../public/ub/output/lib/libub_server.a \
+  ../../../../../../public/ub/output/lib/libubex.a \
+  ../../../../../../public/ub/output/lib/libubfw.a \
+  ../../../../../../public/uconv/libuconv.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
   ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/pcre/lib/libpcre.a \
+  ../../../../../../third-64/pcre/lib/libpcrecpp.a \
+  ../../../../../../third-64/pcre/lib/libpcreposix.a \
   ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
   ../../../../../../third-64/protobuf/lib/libprotobuf.a \
   ../../../../../../third-64/protobuf/lib/libprotoc.a \
@@ -529,42 +653,41 @@ interface/similarity_lda.pb.o:interface/lda.pb.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_lda.pb.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_lda.pb.o interface/lda.pb.cc
 
-train_main.o:main.cc \
-  segment.h \
-  token.h \
+simserver_sim_server.o:sim_server.cc \
+  sim_server.h \
   singleton.h \
   concurrent.h \
   concurrent.hpp \
   log.h \
   dictionary.h \
   document.h \
-  bow.h \
-  corpus.h \
-  model.h \
-  test/test_lda.h \
-  test/test_main.h \
-  encoding.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrain_main.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o train_main.o main.cc
-
-sim_sim_main.o:sim_main.cc \
-  segment.h \
   token.h \
-  singleton.h \
-  concurrent.h \
-  concurrent.hpp \
-  log.h \
-  dictionary.h \
-  document.h \
   bow.h \
   corpus.h \
   model.h \
   test/test_lda.h \
   test/test_main.h \
-  encoding.h \
   similarity.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim_sim_main.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o sim_sim_main.o sim_main.cc
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver_sim_server.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o simserver_sim_server.o sim_server.cc
+
+simserver_sim_server_main.o:sim_server_main.cc \
+  sim_server.h \
+  singleton.h \
+  concurrent.h \
+  concurrent.hpp \
+  log.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  bow.h \
+  corpus.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h \
+  similarity.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver_sim_server_main.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o simserver_sim_server_main.o sim_server_main.cc
 
 server_server.o:server.cc \
   repo.h \
@@ -578,7 +701,10 @@ server_server.o:server.cc \
   kvproxy_client.h \
   corpus.h \
   segment.h \
-  singleton.h
+  singleton.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver_server.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o server_server.o server.cc
 

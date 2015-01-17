@@ -24,7 +24,7 @@ extern uint32_t randomMT();
 #define myrand() (double) (((unsigned long) randomMT()) / 4294967296.)
 
 
-LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, int version) :
+LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version) :
   TopicModel(corpus, dict),
   _alpha(0.01), 
   _init_alpha(1.0),
@@ -37,8 +37,8 @@ LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, int version) :
   _newton_threshold(1e-10),
   _ntopics(100),
   _ndocs(_corpus->size()),
-  _version(version),
   _nterms(corpus->getNTerms()),
+  _version(version),
   _log_prob_w(NULL),
   _var_gamma(NULL),
   _phi(NULL)
@@ -61,8 +61,8 @@ LDAModel::_init_prob(){
   }
 
   // allocate variational parameters
-  _var_gamma = (double **) malloc(sizeof(double*) * (_corpus->size()));
-  for (size_t i = 0; i < _corpus->size(); i++)
+  _var_gamma = (double **) malloc(sizeof(double*) * (_ndocs));
+  for (int i = 0; i < _ndocs; i++)
     _var_gamma[i] = (double *) malloc(sizeof(double) * _ntopics);
 
   int max_length = _corpus->maxDocLen();
@@ -75,7 +75,7 @@ LDAModel::_init_prob(){
 LDAModel::~LDAModel(){
 
   if (_var_gamma) {
-    for (size_t i = 0; i < _corpus->size(); i++) free (_var_gamma[i]);
+    for (int i = 0; i < _ndocs; i++) free (_var_gamma[i]);
     free (_var_gamma);
   }
 
@@ -102,11 +102,11 @@ LDAModel::_cluster(){
 
   SM_LOG_DEBUG ("begin cluster docs %zu", _topics.size());
 
-  for (size_t i = 0; i < _corpus->size(); i++) {
+  for (int i = 0; i < _ndocs; i++) {
     bow_t ret;
     getMostLikelyTopicOfDoc (&ret, i, 0, 1);
     if (ret.size() != 0) {
-      SM_LOG_DEBUG ("doc [%zu] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
+      SM_LOG_DEBUG ("doc [%d] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
       assert (ret[0].id >= 0 && ret[0].id < _ntopics);
       _topics[ret[0].id].push_back (i);
     } else {
@@ -132,8 +132,7 @@ LDAModel::train(){
 
 void
 LDAModel::_em(LDAState *ss){
-  size_t d;
-  int i;
+  int i, d;
   double likelihood, likelihood_old = 0, converged = 1;
 
   // run expectation maximization
@@ -147,7 +146,7 @@ LDAModel::_em(LDAState *ss){
     
     ss->zero ();
     // e-step
-    for (d = 0; d < _corpus->size(); d++) {
+    for (d = 0; d < _ndocs; d++) {
       likelihood += _e_step(_corpus->at(d),
                             _var_gamma[d],
                             _phi,
@@ -206,13 +205,15 @@ int LDAModel::save (const std::string &path, const std::string &basename) {
     return -1;
   }
   google::protobuf::io::OstreamOutputStream oos(&os);
-  google::protobuf::io::GzipOutputStream gzips(&oos);
+  //google::protobuf::io::GzipOutputStream gzips(&oos);
+  google::protobuf::io::CodedOutputStream cos(&oos);
   
   smpb::LDA slda;
 
   slda.set_version(_version);
   slda.set_topics(_ntopics);
   slda.set_terms(_nterms);
+  slda.set_docs(_ndocs);
   slda.set_alpha(_alpha);
 
   for (int i = 0; i < _ntopics; i++) {
@@ -221,13 +222,13 @@ int LDAModel::save (const std::string &path, const std::string &basename) {
     }
   }
   
-  for (size_t i = 0; i < _ndocs; i++){
-    for (size_t j = 0; j < _ntopics; j++) {
+  for (int i = 0; i < _ndocs; i++){
+    for (int j = 0; j < _ntopics; j++) {
       slda.add_gamma(_var_gamma[i][j]);
     }
   }
 
-  if (!slda.SerializeToZeroCopyStream(&gzips)){
+  if (!slda.SerializeToCodedStream(&cos)){
     SM_LOG_WARNING ("serialize to %s error", filename);
     return -1;
   }
@@ -244,7 +245,7 @@ LDAModel::load (const std::string &path, const std::string &basename) {
   if (_version != 0) {
     snprintf (filename, PATH_MAX, "%s/%s.lda.%lu", path.c_str(), basename.c_str(), _version);
   } else {
-    snprintf (filename, PATH_MAX, "%s/%s.lda", path.c_str(), basename.c_str(), _version);
+    snprintf (filename, PATH_MAX, "%s/%s.lda", path.c_str(), basename.c_str());
   }
 
   ifstream is(filename);
@@ -254,10 +255,11 @@ LDAModel::load (const std::string &path, const std::string &basename) {
   }
 
   google::protobuf::io::IstreamInputStream iis(&is);
-  google::protobuf::io::GzipInputStream gzips(&iis);
+  //google::protobuf::io::GzipInputStream gzips(&iis);
+  google::protobuf::io::CodedInputStream ccs(&iis);
 
   smpb::LDA dlda;
-  if (!dlda.ParseFromZeroCopyStream(&gzips)) {
+  if (!dlda.ParseFromCodedStream(&ccs)) {
     SM_LOG_WARNING ("parse lda model [%s] error", filename);
     return -1;
   }
@@ -280,7 +282,7 @@ LDAModel::load (const std::string &path, const std::string &basename) {
     }
   }
 
-  for (size_t i = 0; i < _ndocs; i++) {
+  for (int i = 0; i < _ndocs; i++) {
     for (int j = 0; j < _ntopics; j++) {
       _var_gamma[i][j] = dlda.gamma(i*_ntopics+j);
     }
@@ -296,7 +298,7 @@ LDAModel::load (const std::string &path, const std::string &basename) {
 int
 LDAModel::getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold, int max_result) {
   assert (ret && ret->size() == 0);
-  assert (docid < (int)_corpus->size());
+  assert (docid < (int) _ndocs);
 
   for (int i = 0; i < _ntopics; i++) {
     bow_unit_t u;

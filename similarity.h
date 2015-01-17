@@ -75,11 +75,11 @@ namespace sm {
     vector <SimCalculator *> _calculators;
   };
 
-  class SimCalculator : public Thread<int64_t *> {
+  class SimCalculator : public Thread<int64_t> {
   public:
     SimCalculator(TopicSimilarity *sim);
     ~SimCalculator();
-    virtual int doJob(int64_t* const &topicid);
+    virtual int doJob(const int64_t &topicid);
 
   private:
     TopicSimilarity *_sim;

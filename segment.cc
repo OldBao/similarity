@@ -1,5 +1,4 @@
 #include <fstream>
-
 #include "log.h"
 #include "segment.h"
 #include "encoding.h"
@@ -98,7 +97,10 @@ Segment::segment(vector<Token> *ret_tokens, const string &line,
     goto error;
   }
 
-  tag_postag(tokens, (uint32_t) ret);
+  if ( tag_postag(tokens, (uint32_t) ret) < 0 ){
+    SM_LOG_WARNING ("tag postag error");
+    goto error;
+  }
   
   for (i = 0; i < ret; i++) {
     if (SM_POS2TYPE(tokens[i].type) & mask) {

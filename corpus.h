@@ -21,11 +21,12 @@ namespace sm {
     const bow_t& operator[] (size_t index) const;
     const bow_t& at(size_t index) const;
     std::vector <bow_t> & getBows() {return _docs;}
+    int getIdFromDocid (uint64_t docid);
     uint64_t getDocid(size_t id) const;
   protected:
     std::vector <bow_t> _docs;
 
-    std::vector <int> _docids;
+    std::vector <uint64_t> _docids;
     std::map<uint64_t, int> _docmap;
 
     Dictionary *_dict;

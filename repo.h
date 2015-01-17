@@ -20,22 +20,18 @@ namespace sm {
     RepositoryWorker(Repository *repo);
     virtual ~RepositoryWorker();
     virtual int doJob(const std::string &job);
-
   private:
+    int _read_from_local(uint64_t docid, std::string* content);
+    int _save_to_local(uint64_t docid, const std::string& content);
     Repository* _repo;
     KvProxyClient client;
   };
 
   class Repository {
   public:
-    Repository(const std::string &local, 
-               const std::string &mola_conf_path, 
-               const std::string &mola_conf_file,
-               int nworkers = 12);
-
+    Repository(int nworkers =12, const std::string &local = "");
     virtual ~Repository();
 
-    int open ();
     int addUrl (const std::string& url);
     int addUrls (const std::vector<std::string> &urls);
     int registerItemHandler(ItemCallback);
@@ -45,14 +41,19 @@ namespace sm {
     void waitAllJobDone();
     
     int tfidf ();
+    int lda();
+
     int save(const std::string &basepath);
+
+    Corpus& corpus(){ return _corpus; }
+    Dictionary& dict(){ return _dict; }
+    
+    const std::string getLocalCachePath(){ return _localpath; }
    private:
-    std::string _localpath, _mola_path, _mola_file;
-    uint64_t _sign_doc(const std::string &doc);
+    std::string _localpath;
     std::map<int, uint64_t> _docmap;
 
     std::vector<RepositoryWorker *> _workers;
-
     Lock _docmapLock;
     Dictionary _dict;
     Corpus _corpus, _tfidf;
