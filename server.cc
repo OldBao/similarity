@@ -34,7 +34,7 @@ main(int argc, char **argv){
   i = 0;
   while (1) {
     i++;
-    if (i % 1000 == 0) {
+    if (i % 10000 == 0) {
       sleep (10);
     }
     if (i == max) break;

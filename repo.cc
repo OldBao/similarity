@@ -132,6 +132,7 @@ Repository::doJob (const string &values) {
 
 int
 Repository::doJob(const string &values) {
+  /*
   json_tokener *tokener = json_tokener_new();
   const char *content = NULL,  *title = NULL, *docidstr;
   bow_t bow;
@@ -156,7 +157,7 @@ Repository::doJob(const string &values) {
       title = json_object_get_string (value);
     }
   }
-
+  
 
   if (!content || !title || !docidstr) {
      SM_LOG_WARNING ("can't get keys of content or title");
@@ -192,6 +193,7 @@ Repository::doJob(const string &values) {
  error:
   json_tokener_free(tokener);
   return -1;
+  */
 }
 
 

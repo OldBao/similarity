@@ -107,10 +107,10 @@ DEP_INCPATH=-I../../../../../../com/idlcompiler \
   -I../../../../../../third-64/gtest/include \
   -I../../../../../../third-64/gtest/output \
   -I../../../../../../third-64/gtest/output/include \
-  -I../../../../../../third-64/json-c \
-  -I../../../../../../third-64/json-c/include \
-  -I../../../../../../third-64/json-c/output \
-  -I../../../../../../third-64/json-c/output/include \
+  -I../../../../../../third-64/json-cpp \
+  -I../../../../../../third-64/json-cpp/include \
+  -I../../../../../../third-64/json-cpp/output \
+  -I../../../../../../third-64/json-cpp/output/include \
   -I../../../../../../third-64/pcre \
   -I../../../../../../third-64/pcre/include \
   -I../../../../../../third-64/pcre/output \
@@ -134,7 +134,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=973b0f795da2fa13cd9dc6baedfd2b7a  COMAKE
+COMAKE_MD5=f6c0de38e6b1a7421bb29bf99ba265a8  COMAKE
 
 
 .PHONY:all
@@ -337,7 +337,7 @@ simserver:simserver_sim_server.o \
   ../../../../../../public/uconv/libuconv.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
-  ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/json-cpp/lib/libjson_libmt.a \
   ../../../../../../third-64/pcre/lib/libpcre.a \
   ../../../../../../third-64/pcre/lib/libpcrecpp.a \
   ../../../../../../third-64/pcre/lib/libpcreposix.a \
@@ -409,7 +409,7 @@ server:server_server.o \
   ../../../../../../public/uconv/libuconv.a \
   ../../../../../../third-64/gtest/lib/libgtest.a \
   ../../../../../../third-64/gtest/lib/libgtest_main.a \
-  ../../../../../../third-64/json-c/lib/libjson.a \
+  ../../../../../../third-64/json-cpp/lib/libjson_libmt.a \
   ../../../../../../third-64/pcre/lib/libpcre.a \
   ../../../../../../third-64/pcre/lib/libpcrecpp.a \
   ../../../../../../third-64/pcre/lib/libpcreposix.a \

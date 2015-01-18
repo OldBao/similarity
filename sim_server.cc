@@ -6,19 +6,19 @@
 using namespace sm;
 using namespace std;
 
-static void bow_to_json(const bow_t &bow, string *ret);
-
+/*
+const static int ERROR_CODE_##message = -code;          \
+const static char *ERROR_MSG_##message = #message;   \
+*/
 #define DEF_ERROR(code, message)                         \
-  const static int ERROR_CODE_##message = -code;          \
-  const static char *ERROR_MSG_##message = #message;   \
   const static char *ERROR_JSON_##message = "{ \"error_code\" : -" #code ", \"error_message\" : \"" #message " \"}";
 
 DEF_ERROR(1, FORMAT)
-DEF_ERROR(2, DOCID)
-DEF_ERROR(3, FILTER)
+DEF_ERROR(2, DOCID_NOT_SET)
+DEF_ERROR(3, DOCID)
 DEF_ERROR(4, RESULT)
 DEF_ERROR(5, THRESHOLD)
-
+DEF_ERROR(10, INTERNAL)
 
 typedef ub::SmartEvent<SimServerEvent> SimServerEventPtr;
 
@@ -44,10 +44,10 @@ SimServer::updateServerData(SimServerData *data) {
 }
 
 int 
-SimServer::getSimilarities (bow_t *bow, uint64_t docid, float threshold, int max_result) {
+SimServer::getSimilarities (sim_t *sims, uint64_t docid, float threshold, int max_result) {
   int ret;
   _dataLock.AcquireRead();
-  ret = _server_data->getSimilarity (bow, docid, threshold, max_result);
+  ret = _server_data->getSimilarity (sims, docid, threshold, max_result);
   _dataLock.Release();
   return ret;
 }
@@ -88,73 +88,35 @@ SimServerEvent::read_done_callback (){
   const void *req_buf = this->get_read_buffer();
   int headlen = this->get_http_headlen();
   int bodylen = this->get_http_bodylen();
-  int ret;
-
-  json_tokener *tokener = json_tokener_new();
-  json_object *obj = json_tokener_parse_ex (tokener, (char *)req_buf+headlen, bodylen);
-  const char *docidstr = NULL;
-  uint64_t docid = -1;
-  if (!obj) {
-    SM_LOG_WARNING("error json format");
-    return;
-  }
-
-  json_object_object_foreach (obj, key, value) {
-    if (!strcmp ("docid", key)) {
-      docidstr = json_object_get_string(value);
+  sim_t sims;
+  SimServer *server = (SimServer *) _fserver;
+  uint64_t docid;
+  float threshold = server->getDefaultThreshold();
+  int max_result = server->getDefaultMaxResult();
+  string ret;
+  char resheader[1024];
+  
+  string request((char *)req_buf+headlen, bodylen);
+  if (0 == _get_request(request, &docid, &threshold, &max_result, &ret)) {
+    if (0 != server->getSimilarities (&sims, docid, threshold, max_result)){
+      SM_LOG_NOTICE("get similarity fail [%" PRIu64 "]", docid );
+      ret = ERROR_JSON_INTERNAL;
+    } else {
+      _sims_to_json(sims, &ret);
     }
   }
 
-
-  if (!docidstr) {
-    SM_LOG_WARNING ("didn't get 'docid' key in [%s]", (char *)req_buf+headlen);
-    return;
-  }
-
-  ret = sscanf (docidstr, "%" PRIu64, &docid);
-  if (1 != ret) {
-    SM_LOG_WARNING ("docid not uint64");
-    return;
-  }
-  
-  bow_t bow;
-  SimServer *server = (SimServer *) _fserver;
-  server->getSimilarities (&bow, docid, 0.0, 5);
-  SM_LOG_NOTICE ("getted %zu similar docs", bow.size());
-
-  json_object *retobj = json_object_new_object();
-  json_object *simarr = json_object_new_array ();
-
-  for (size_t i = 0; i < bow.size(); i++) {
-    json_object *simobj = json_object_new_object();
-    json_object *idobj = json_object_new_int(bow[i].id);
-    json_object *weightobj = json_object_new_double(bow[i].weight);
-    json_object_object_add (simobj, "docid", idobj);
-    json_object_object_add (simobj, "similarity", weightobj);
-
-    json_object_array_put_idx (simarr, i, simobj);
-  }
-  json_object_object_add (retobj, "similarities", simarr);
-
-  const char *retstr = json_object_get_string (retobj);
-  char resheader[1024];
-  int res_header_len, res_body_len = strlen(retstr);
+  int res_header_len;
 
   res_header_len = snprintf (resheader, 1024, 
                              "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
-                             "Content-Length: %zu\r\n\r\n", strlen (retstr));
+                             "Content-Length: %zu\r\n\r\n", ret.size());
 
-  void *res_buf = this->get_write_buffer(res_header_len+res_body_len);
-
-  SM_LOG_DEBUG ("max rd bufsize %d max write buf size %d", 
-                    server->get_max_readbufsize(), server->get_max_writebufsize());
+  void *res_buf = this->get_write_buffer(res_header_len+ret.size());
 
   memcpy (res_buf, resheader, res_header_len);
-  memcpy (res_buf+res_header_len, retstr, res_body_len);
-  SM_LOG_DEBUG ("retstr :%d-%d: %s", res_header_len, res_body_len, (char *)res_buf);
-  //TODO free memory ;-)
-  
-  awrite(res_header_len + res_body_len);
+  memcpy ((char *)res_buf+res_header_len, ret.data(), ret.size());
+  awrite(res_header_len + ret.size());
 }
 
 void
@@ -169,6 +131,13 @@ SimServerEvent::event_error_callback (){
 SM_IMP_SINGLETON (SimServerDataManager)
 
 SimServerDataManager::~SimServerDataManager(){
+  for (map<uint64_t, SimServerData *>::iterator iter = _datas.begin();
+       iter != _datas.end();
+       iter++)
+    {
+      delete iter->second;
+    }
+    
 }
 
 int
@@ -227,14 +196,28 @@ SimServerData::SimServerData(uint64_t version):
 }
 
 SimServerData::~SimServerData(){
-
+  if (_dict) delete _dict;
+  if (_corpus) delete _corpus;
+  if (_model) delete _model;
 }
 
 
 int
-SimServerData::getSimilarity(bow_t *bow, uint64_t docid, float threshold, int max){
+SimServerData::getSimilarity(sim_t *sims, uint64_t docid, float threshold, int max){
+  SM_ASSERT (sims && sims->size()==0, "ret can't be empty");
+  bow_t bow;
   int id = _corpus->getIdFromDocid (docid);
-  return _sim->getSimilarities(bow, id, threshold, max);
+  if ( 0 == _sim->getSimilarities(&bow, id, threshold, max) ){
+    for (size_t i = 0; i < bow.size(); i++) {
+      sim_unit_t u;
+      u.docid = _corpus->getDocid(bow[i].id);
+      u.sim = bow[i].weight;
+      sims->push_back(u);
+    }
+    return 0;
+  }
+
+  return -1;
 }
 
 
@@ -246,7 +229,6 @@ SimServerData::getVersion(){
 
 int
 SimServerData::load(const string &path) {
-  int ret;
   _dict = new Dictionary(_version);
   if ( 0 != _dict->load(path, "similarity")){
     SM_LOG_DEBUG ("load dict error");
@@ -278,18 +260,91 @@ SimServerData::load(const string &path) {
 
 
 #include <iostream>
-  for (int i = 0; i < _corpus->size(); i++) {
+  for (size_t i = 0; i < _corpus->size(); i++) {
     bow_t retbow;
     cout << "Sim of [ " << _corpus->getDocid(i)  << ":";
     _sim->getSimilarities(&retbow, i, 0.0, 5);
     cout << retbow.size() << "]\t";
 
-    for (int j = 0; j < retbow.size(); j++) {
+    for (size_t j = 0; j < retbow.size(); j++) {
       cout << "[" << _corpus->getDocid(retbow[j].id) << ":" << retbow[j].weight << "]";
     }
     cout << endl;
   }
 
   return 0;
-
 }
+
+
+int 
+SimServerEvent::_get_request(const string &request, 
+                             uint64_t* docid, float* threshold, int* max_result, string *err) {
+  Json::Reader reader;
+  Json::Value value;
+  if (!reader.parse(request, value, false)) {
+    (*err) = ERROR_JSON_FORMAT;
+    return -1;
+  }
+
+  if (!value.isMember ("docid") ) {
+    (*err) = ERROR_JSON_DOCID_NOT_SET;
+    return -1;
+  }
+  
+  if (!value["docid"].isNumeric()) {
+    (*err) = ERROR_JSON_DOCID;
+    return -1;
+  }
+
+  *docid = value["docid"].asUInt64();
+
+  if (value.isMember ("filter")) {
+    if (value["filter"].isMember("threshold")) {
+      if (!value["filter"]["threshold"].isNumeric()) {
+        (*err) = ERROR_JSON_THRESHOLD;
+        return -1;
+      } else {
+        *threshold = value["filter"]["threshold"].asFloat();
+      }
+    }
+
+    if (value["filter"].isMember("max_result")) {
+      if (!value["filter"]["max_result"].isInt()) {
+        (*err) = ERROR_JSON_RESULT;
+        return -1;
+      } else {
+        *threshold = value["filter"]["max_result"].asInt();
+      }
+    }
+  }
+
+  SM_LOG_NOTICE ("[docid:%" PRIu64 " threshold: %lf max_result:%d",
+                 *docid, *threshold, *max_result);
+  return 0;
+}
+
+
+void 
+SimServerEvent::_sims_to_json(const sim_t &sims, string *strret) {
+  Json::Value ret(Json::objectValue), simarr(Json::arrayValue);
+  ret["error_code"] = 0;
+  ret["error_message"] = "ok";
+
+   for (size_t i = 0; i < sims.size(); i++) {
+     Json::Value sim(Json::objectValue);
+
+     Json::Value simv(sims[i].sim);
+     std::stringstream ss;
+     ss << sims[i].docid;
+     Json::Value docidv(ss.str());
+
+     sim["docid"] = docidv;
+     sim["similarity"] = simv;
+     simarr.append(sim);
+  }
+   ret["similarities"] = simarr;
+
+   Json::FastWriter writer;
+   *strret = writer.write(ret);
+}
+#undef DEF_ERROR

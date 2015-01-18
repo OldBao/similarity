@@ -205,7 +205,6 @@ int LDAModel::save (const std::string &path, const std::string &basename) {
     return -1;
   }
   google::protobuf::io::OstreamOutputStream oos(&os);
-  //google::protobuf::io::GzipOutputStream gzips(&oos);
   google::protobuf::io::CodedOutputStream cos(&oos);
   
   smpb::LDA slda;
@@ -255,11 +254,11 @@ LDAModel::load (const std::string &path, const std::string &basename) {
   }
 
   google::protobuf::io::IstreamInputStream iis(&is);
-  //google::protobuf::io::GzipInputStream gzips(&iis);
-  google::protobuf::io::CodedInputStream ccs(&iis);
+  google::protobuf::io::CodedInputStream cis(&iis);
+  cis.SetTotalBytesLimit(1024*1024*1024, 1024*1024*1024);
 
   smpb::LDA dlda;
-  if (!dlda.ParseFromCodedStream(&ccs)) {
+  if (!dlda.ParseFromCodedStream(&cis)) {
     SM_LOG_WARNING ("parse lda model [%s] error", filename);
     return -1;
   }

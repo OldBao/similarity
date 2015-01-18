@@ -208,7 +208,7 @@ Dictionary::save(const std::string& path, const std::string &basename, const std
   ofstream os(fullpath);
   if (!os.is_open()) return -1;
   google::protobuf::io::OstreamOutputStream oos(&os);
-  google::protobuf::io::GzipOutputStream gzips(&oos);
+  google::protobuf::io::CodedOutputStream cos(&oos);
 
   smpb::Dictionary serial_dict;
 
@@ -224,7 +224,7 @@ Dictionary::save(const std::string& path, const std::string &basename, const std
   serial_dict.set_npos(_nPos);
   serial_dict.set_version(_version);
 
-  if (!serial_dict.SerializeToZeroCopyStream(&gzips)){
+  if (!serial_dict.SerializeToCodedStream(&cos)){
     SM_LOG_WARNING ("serialize to os error");
     return -1;
   }
@@ -248,10 +248,10 @@ Dictionary::load (const std::string &path, const std::string &base) {
     return -1;
   }
   google::protobuf::io::IstreamInputStream iis(&is);
-  google::protobuf::io::GzipInputStream gzips(&iis);
+  google::protobuf::io::CodedInputStream cis(&iis);
 
   smpb::Dictionary deserial_dict;
-  if (!deserial_dict.ParseFromZeroCopyStream(&gzips)) {
+  if (!deserial_dict.ParseFromCodedStream(&cis)) {
     SM_LOG_WARNING ("parse dict %s error", fullpath);
     return -1;
   }

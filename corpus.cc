@@ -115,7 +115,7 @@ Corpus::save(const std::string& path, const std::string &basename){
     return -1;
   }
   google::protobuf::io::OstreamOutputStream oos(&os);
-  google::protobuf::io::GzipOutputStream gzips(&oos);
+  google::protobuf::io::CodedOutputStream cos(&oos);
 
   serial_corpus.set_version(_version);
   serial_corpus.set_nterms(_nterms);
@@ -140,7 +140,7 @@ Corpus::save(const std::string& path, const std::string &basename){
       }
   }
 
-  if (!serial_corpus.SerializeToZeroCopyStream(&gzips)) {
+  if (!serial_corpus.SerializeToCodedStream(&cos)) {
     SM_LOG_WARNING ("serialize to %s error", fullpath);
     return -1;
   }
@@ -162,10 +162,10 @@ Corpus::load(const std::string &path, const std::string &basename){
   }
 
   google::protobuf::io::IstreamInputStream iis(&is);
-  google::protobuf::io::GzipInputStream gzips(&iis);
+  google::protobuf::io::CodedInputStream cis(&iis);
   smpb::Corpus deserial_corpus;
 
-  if (!deserial_corpus.ParseFromZeroCopyStream(&gzips)){
+  if (!deserial_corpus.ParseFromCodedStream(&cis)){
     SM_LOG_WARNING ("parse corpus file %s error", fullpath);
     return -1;
   }

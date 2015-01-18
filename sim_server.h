@@ -15,6 +15,13 @@
 #include "similarity.h"
 
 namespace sm {
+  typedef struct sim_unit_s {
+    uint64_t docid;
+    double sim;
+  } sim_unit_t;
+
+  typedef std::vector<sim_unit_t> sim_t;
+
   class SimServerData {
   private:
     uint64_t _version;
@@ -29,7 +36,7 @@ namespace sm {
     uint64_t getVersion();
     ~SimServerData();
 
-    int getSimilarity(bow_t *bow, uint64_t docid, float threshold, int max_result);
+    int getSimilarity(sim_t *sim, uint64_t docid, float threshold, int max_result);
   };
 
 
@@ -40,6 +47,13 @@ namespace sm {
     void http_read_header_done();
     void http_read_section_done();
     void event_error_callback();
+
+  private:
+    int _get_request(const std::string &req,
+                     uint64_t *docid, float* threshold, int *max_result,
+                     std::string *ret);
+
+    void _sims_to_json(const sim_t &sims, std::string *ret);
   };
 
 
@@ -50,8 +64,13 @@ namespace sm {
 
     int updateServerData (SimServerData *data);
     uint64_t getCurrentDataVersion();
-    int getSimilarities (bow_t *bow, uint64_t docid, float threshold=0.5, int max_result=50);
+
+    int getSimilarities (sim_t *sim, uint64_t docid, float threshold, int max_result);
     void on_accept (ub::UbEvent *event);
+
+    //TODO change this to config
+    float getDefaultMaxResult() {return 20; }
+    int getDefaultThreshold() {return 0.0; }
   private:
     SimServerData *_server_data;
     RWLock _dataLock;
