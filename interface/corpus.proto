@@ -9,7 +9,7 @@ message Doc {
 };
 
 message Corpus {
-    required int64 version = 1;
+    required uint64 version = 1;
     required int32 nterms = 2;
     repeated Doc docs = 3;    
 };

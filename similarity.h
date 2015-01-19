@@ -30,8 +30,13 @@ namespace sm {
 
     virtual int getSimilarities ( bow_t *ret, 
                                   int id, 
-                                  double sim_threshold = 0.75, 
-                                  int max_result=50) = 0;
+                                  double sim_threshold = 0.1, 
+                                  int max_result=20) = 0;
+    virtual int getSimilarities ( bow_t *ret, 
+                                  const bow_t& bow,
+                                  const std::vector<int>& comp_dest, 
+                                  double sim_threshold = 0.1,
+                                  int max_result=20) = 0;
     // inference
     //virtual int inference (std::vector<int> *ret, const bow_t& bow, double sim_theshold=0.75, int max_result = 50) = 0;
     //virtual int save(const std::string &path, const std::string &basename) = 0;
@@ -54,6 +59,12 @@ namespace sm {
                                   int id, 
                                   double sim_threshold = 0.75, 
                                   int max_result=50 );
+
+    virtual int getSimilarities ( bow_t *ret, 
+                                  const bow_t& bow,
+                                  const std::vector<int>& comp_dest, 
+                                  double sim_threshold = 0.1,
+                                  int max_result=20);
 
     virtual int doJob(int64_t topicid);
     // inference

@@ -2,6 +2,8 @@
 #include "json/json.h"
 #include "sim_server.h"
 #include "log.h"
+#include "mola_wrapper.h"
+#include "kvproxy_client.h"
 
 using namespace sm;
 using namespace std;
@@ -153,9 +155,10 @@ int
 SimServerDataManager::checkVersion(){
   uint64_t remote_version = 0; // TODO get version from remote
 
+  /*
   SM_LOG_NOTICE ("check trainer version %" PRIu64 " : localversion is %" PRIu64
                  , remote_version, _local_version);
-
+  */
   if (remote_version >= _local_version) { //TODO change this to >
     //TODO sync remote version to local
     if (_datas.find(_local_version) != _datas.end())
@@ -203,21 +206,85 @@ SimServerData::~SimServerData(){
 
 
 int
-SimServerData::getSimilarity(sim_t *sims, uint64_t docid, float threshold, int max){
+SimServerData::getSimilarity(sim_t *sims, uint64_t docid, float threshold, int max_result){
   SM_ASSERT (sims && sims->size()==0, "ret can't be empty");
-  bow_t bow;
+  bow_t sim_bow;
   int id = _corpus->getIdFromDocid (docid);
-  if ( 0 == _sim->getSimilarities(&bow, id, threshold, max) ){
-    for (size_t i = 0; i < bow.size(); i++) {
-      sim_unit_t u;
-      u.docid = _corpus->getDocid(bow[i].id);
-      u.sim = bow[i].weight;
-      sims->push_back(u);
+  if (-1 != id) {
+    if ( 0 != _sim->getSimilarities(&sim_bow, id, threshold, max_result) ){
+      return -1;
     }
-    return 0;
+  } else {
+    SM_LOG_DEBUG ("Getting an unseen doc [%" PRIu64 "]", docid);
+    std::string url;
+    KvProxyClient client;
+    string content;
+    bow_t topic_bow, doc_bow;
+    Document doc;
+
+    if (0 != getUrlFromDocid (docid, &url)){
+      return -1;
+    }
+
+    if (0 != client.get(url+"|topic", &content)) {
+      return -1;
+    }
+
+
+    if (0 != doc.parseFromJsonRaw(content)){
+      return -1;
+    }
+
+    if (0 != doc.analysis()) {
+      return -1;
+    }
+
+    _dict->doc2bow(&doc_bow, doc, false);
+    doc_bow.pre_handle();
+    if (doc_bow.size() == 0) {
+      SM_LOG_NOTICE ("docid [%" PRIu64 "]bow is zero", doc.getId());
+      return -1;
+    }
+    //TODO tfidf?
+
+    if (0 != _model->inference(doc_bow, &topic_bow)){
+      return -1;
+    }
+
+
+    SM_LOG_DEBUG ("most likely topic [%d:%.3lf]", topic_bow[0].id, topic_bow[0].weight);
+    vector<int> docInTopic;
+    _model->getDocsOfTopic (&docInTopic, topic_bow[0].id);
+
+#ifdef DEBUG
+    cout << "Topic Liklihood: ";
+    for (size_t i = 0; i < topic_bow.size(); i++) {
+      cout << "[" << topic_bow[i].id << ":" << topic_bow[i].weight << "] ";
+    }
+    cout << endl;
+
+    cout << "Document in Topic [" << topic_bow[0].id <<  "]" << endl;
+    for (vector <int>::iterator iter = docInTopic.begin();
+         iter != docInTopic.end();
+         iter++)
+      cout << _corpus->getDocid(*iter) << endl;
+    cout << endl;
+#endif
+    
+    if (0 != _sim->getSimilarities (&sim_bow, doc_bow, docInTopic, threshold, max_result)) {
+      return -1;
+    }
+
   }
 
-  return -1;
+  for (size_t i = 0; i < sim_bow.size(); i++) {
+    sim_unit_t u;
+    u.docid = _corpus->getDocid(sim_bow[i].id);
+    u.sim = sim_bow[i].weight;
+    sims->push_back(u);
+  }
+
+  return 0;
 }
 
 
@@ -313,7 +380,7 @@ SimServerEvent::_get_request(const string &request,
         (*err) = ERROR_JSON_RESULT;
         return -1;
       } else {
-        *threshold = value["filter"]["max_result"].asInt();
+        *max_result = value["filter"]["max_result"].asInt();
       }
     }
   }

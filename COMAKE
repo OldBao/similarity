@@ -40,16 +40,16 @@ CONFIGS('third-64/gtest@gtest_1-6-0-100_PD_BL')
 CONFIGS('third-64/json-cpp@json-cpp_0-6-1-400_PD_BL')
 CONFIGS('third-64/protobuf@protobuf_2-4-1-1100_PD_BL')
 CONFIGS('third-64/zlib@zlib_1-2-3-400_PD_BL')
-#CONFIGS('app/mobile/flyflow/server/cbs/lib@lib_2-0-26-0_PD_BL')
+CONFIGS('app/mobile/flyflow/server/lib/storage@storage_1-0-1-0_PD_BL')
 
-user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc kvproxy_client.cc '
-user_sources+= 'interface/dict.proto interface/corpus.proto interface/bow.proto interface/lda.proto'
-user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h'
+user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc kvproxy_client.cc mola_wrapper.cc '
+user_sources+= ' interface/dict.proto interface/corpus.proto interface/bow.proto interface/lda.proto'
+user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h'
 
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 Application('simserver',Sources("sim_server.cc sim_server_main.cc"), Libraries('-lsimilarity'))
 Application('server',Sources("server.cc"), Libraries('-lsimilarity'))
+Application('sign',Sources("sign.cc"))
 
-#SharedLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
 SubDirectory('test')
 

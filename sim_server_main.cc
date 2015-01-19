@@ -1,7 +1,8 @@
 #include "ub.h"
 #include "sim_server.h"
 #include "log.h"
-
+#include "mola_wrapper.h"
+#include "segment.h"
 using namespace sm;
 
 comcfg::Configure conf;
@@ -21,8 +22,18 @@ main(int argc, char **argv) {
     return -1;
   }
 
-  if (0 != SimServerDataManager::getInstance()->init(argv[1])) {
-    SM_LOG_FATAL ("init sim server manager error");
+  if ((ret =  SimServerDataManager::getInstance()->init(argv[1])) < 0) {
+      SM_LOG_FATAL ("init sim server manager error : %d", ret);
+      return -1;
+  }
+
+  if ((ret = MolaEngineManager::getInstance()->init("./conf", "mola.conf")) < 0) {
+    SM_LOG_FATAL ("init mola engine error :%d", ret);
+    return -1;
+  }
+
+  if ((ret = Segment::getInstance()->load("worddict", "postag", "stopwords.utf8")) < 0) {
+    SM_LOG_FATAL ("init word seg error");
     return -1;
   }
 

@@ -10,6 +10,8 @@ using namespace sm;
 
 int
 main(int argc, char **argv){
+  fstream f("docmap", ios::out | ios::trunc);
+  f.close();
   signal(SIGPIPE, SIG_IGN);
   ul_logstat_t logstat;
   logstat.events = 4;

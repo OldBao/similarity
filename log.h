@@ -14,14 +14,14 @@
 
 #define __SM_CHECK(cond, fmt, arg...) {                                 \
     if (!(cond)) {                                                      \
-      printf ("assert [" #cond "] fails : " fmt "\n", ##arg);           \
+      printf ("assert [" #cond "] fails : " fmt "\n", ##arg);         \
       abort();                                                          \
     }                                                                   \
   }
 
 #define SM_CHECK_RET(ret, cond, fmt, arg...)  {                 \
     if (!(cond)) {                                              \
-      printf ("assert [" #cond "] fails : " fmt "\n", ##arg);   \
+      printf ("assert [" #cond "] fails : " fmt "\n", ##arg); \
       abort();                                                  \
       return ret;                                               \
     }                                                           \

@@ -30,7 +30,7 @@ TopicSimilarity::TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *
 
 
 TopicSimilarity::~TopicSimilarity() {
-  for (int i = 0; i < _calculators.size(); i++) {
+  for (size_t i = 0; i < _calculators.size(); i++) {
     delete _calculators[i];
   }
 
@@ -94,10 +94,12 @@ TopicSimilarity::_cal_within_topics(const vector<int> &topics) {
   return 0;
 }
 
+
 int
 TopicSimilarity::doJob(int64_t topicid) {
   return _cal_within_topic(topicid);
 }
+
 
 int
 TopicSimilarity::calculate(int64_t topicid){
@@ -109,8 +111,39 @@ TopicSimilarity::calculate(int64_t topicid){
 
 
 int
+TopicSimilarity::getSimilarities(bow_t *ret, const bow_t& bow, const vector<int> &dest, 
+                                 double threshold, int max_result)
+{
+  SM_ASSERT (ret && ret->size() == 0, "ret should be empty");
+  if (max_result <= 0) return 0;
+  
+  for (vector<int>::const_iterator iter = dest.begin();
+       iter != dest.end();
+       iter++)
+    {
+      SM_ASSERT (*iter < _corpus->size() && *iter >0, 
+                 "id [%d] not with corpus", *iter);
+      bow_unit_t u;
+      float distance = bow.cossim(_corpus->at(*iter));
+
+      if (distance <= threshold) {
+        continue;
+      }
+      u.id = *iter;
+      u.weight = distance;
+      
+      ret->push_topk (u, max_result);
+    }
+  
+  ret->sort();
+  return 0;
+}
+
+
+int
 TopicSimilarity::getSimilarities (bow_t *ret, int id, double sim_threshold, int max_result)
 {
+  if (max_result <= 0) return 0;
   SM_CHECK_RET_ERR (id < _sims.size(), "sim size is too small");
   SM_CHECK_RET_ERR (ret->size() == 0, "return container should be empty");
 
@@ -122,7 +155,7 @@ TopicSimilarity::getSimilarities (bow_t *ret, int id, double sim_threshold, int 
     if (u.weight < sim_threshold) continue;
     else {
       ret->push_back (u);
-      if (ret->size() > max_result) break;
+      if (ret->size() >= max_result) break;
     }
   }
 

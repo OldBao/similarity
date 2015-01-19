@@ -11,7 +11,10 @@ class Document {
   Document (const std::string &content, const std::string &title, 
             uint64_t id, const std::string& encoding = "utf8");
 
-  int analysis(uint64_t mask = ~0); //segment
+  Document(const std::string& encoding = "utf8");
+  int parseFromJsonRaw(const std::string &raw);
+  int analysis(uint64_t mask = 
+    SM_TOKEN_TYPE_DEFAULT | SM_TOKEN_TYPE_VERB | SM_TOKEN_TYPE_VD | SM_TOKEN_TYPE_VN);
   const std::vector<Token>& getTokens() const{
     return _tokens;
   }

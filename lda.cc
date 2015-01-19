@@ -167,20 +167,29 @@ LDAModel::_em(LDAState *ss){
 
 int 
 LDAModel::inference (const bow_t &src, bow_t *ret, bool normalized){
-  assert (0); //TODO, implement this
   assert (ret->size() == 0);
   double *var_gamma[1], **phi;
 
-  var_gamma[0] =  (double *)malloc (sizeof (double) * _ntopics);
+  var_gamma[0] =  (double *) malloc (sizeof (double) * _ntopics);
   phi = (double **) malloc (sizeof (double *) * src.size());
   for (size_t n = 0; n < src.size(); n++) {
     phi[n] = (double *) malloc (sizeof (double) * _ntopics);
   }
+
   _infer (src, var_gamma[0], phi);
+
+  for (int i = 0; i < _ntopics; i++) {
+    bow_unit_t u;
+    u.id = i;
+    u.weight = _var_gamma[0][i];
+    ret->push_back (u);
+  }
+  ret->sort();
 
   if (normalized) {
     ret->unitvec();
   }
+
   return 0;
 }
 

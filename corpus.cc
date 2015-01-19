@@ -30,7 +30,8 @@ Corpus::addDoc( uint64_t docid, const bow_t &bow ) {
 
   _docmapLock.AcquireWrite();
   SM_LOG_DEBUG ("Adding docid %" PRIu64 " to map", docid);
-  SM_ASSERT (_docmap.find(docid) == _docmap.end(), "docid " PRIu64 " should not add twice", docid);
+  SM_ASSERT (_docmap.find(docid) == _docmap.end(), 
+             "docid %" PRIu64 " should not add twice", docid);
 
   _docmap[docid] = newid;
   _docmapLock.Release();
@@ -176,15 +177,13 @@ Corpus::load(const std::string &path, const std::string &basename){
   }
   _nterms = deserial_corpus.nterms();
 
-  for (size_t i = 0; i < deserial_corpus.docs_size(); i++) {
+  for (int i = 0; i < deserial_corpus.docs_size(); i++) {
     const smpb::Doc &deserial_doc = deserial_corpus.docs(i);
     _docmap[deserial_doc.docid()] = i;
 
     const smpb::Bow &dbow = deserial_doc.bow();
     bow_t bow;
-    for (size_t j = 0; j < dbow.units_size(); j++) {
-      const smpb::BowUnit &dbowunit = dbow.units(j);
-
+    for (int j = 0; j < dbow.units_size(); j++) {
       bow_unit_t u;
       u.id = dbow.units(j).id();
       u.weight = dbow.units(j).weight();
@@ -212,16 +211,17 @@ Corpus::load(const std::string &path, const std::string &basename){
   }
 
 
-  SM_LOG_NOTICE ("Load coprus %s version %lu success: %zu docs, %zu terms",
-                 fullpath, _docs.size(), _nterms);
+  SM_LOG_NOTICE ("Load coprus %s version %" PRIu64 " success: %zu docs, %d terms",
+                 fullpath, _version, _docs.size(), _nterms);
   return 0;
 }
 
 int
 Corpus::getIdFromDocid(uint64_t docid) {
-  int id;
+  int id = -1;
   _docmapLock.AcquireRead ();
-  id = _docmap[docid];
+  if (_docmap.find(docid) != _docmap.end())
+    id = _docmap[docid];
   _docmapLock.Release();
   return id;
 }

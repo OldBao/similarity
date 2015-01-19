@@ -34,7 +34,8 @@ static int encoding_iconv (const string& from, string *to, const char * fromenco
         outlen = BUFFER_SIZE;
         continue;
       } else if (errno == EINVAL || errno == EILSEQ) {
-        SM_LOG_WARNING ("iconv fails : %s in pos %d", strerror(errno), inbuf - (char *)from.data());
+        SM_LOG_WARNING ("iconv fails : %s in pos %ld", 
+                        strerror(errno), inbuf - (char *)from.data());
         to->append(buffer, BUFFER_SIZE - outlen);
         break;
       }

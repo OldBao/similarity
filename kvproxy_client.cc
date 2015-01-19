@@ -143,7 +143,6 @@ KvProxyClient::open(){
 
 }
 
-
 int
 KvProxyClient::get(const std::string &key, std::string *value) {
   SM_ASSERT (value && value->size() == 0, "caller given a wrong value");
@@ -191,7 +190,7 @@ KvProxyClient::get(const std::string &key, std::string *value) {
     if ( expect_body_size != _socket.Recv(body, expect_body_size) ){
       SM_LOG_WARNING ("receive packet error");
     } else {
-      value->assign(body, res_head->body_len);
+      value->assign(body, expect_body_size);
     }
     free (body);
     return 0;
