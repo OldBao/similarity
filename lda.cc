@@ -45,7 +45,8 @@ LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version, int nwor
   assert (corpus);
   assert (corpus->size() > 0);
 
-  for (int i = 0; i < nworkers; i++) {
+  int workers = std::min (nworkers, (int)corpus->size());
+  for (int i = 0; i < workers; i++) {
     LDAEWorker *worker = new LDAEWorker(this);
     _e_workers.push_back (worker);
     worker->start();
@@ -135,7 +136,7 @@ LDAModel::_merge_ss(LDAState *ss) {
     LDAEWorker* worker = _e_workers[i];
     likelihood += worker->likelihood;
     ss->alpha_suffstats += worker->ss->alpha_suffstats;
-    ss->ndocs = worker->ss->ndocs;
+    ss->ndocs += worker->ss->ndocs;
     for (int j = 0; j < _ntopics; j++) {
       ss->class_total[j] += worker->ss->class_total[j];
       for (int n = 0; n < _nterms; n++) {
@@ -197,6 +198,7 @@ LDAModel::_em(LDAState *ss){
 
     if ( t * range < (int) _corpus->size() ) {
       pair<int, int> job(t*range, _corpus->size()-1);
+      SM_LOG_DEBUG ("add job to %d", t);
       _e_workers[t]->addJob(job);
     }
 
@@ -702,15 +704,18 @@ int
 LDAEWorker::doJob(const pair<int, int>& range){
   SM_ASSERT (range.first <= range.second, "range should be [l, g]");
 
+  SM_LOG_NOTICE ("Trainning [%d-%d]",
+                 range.first, range.second);
 
   for (int i = range.first; i <= range.second; i++) {
+    SM_LOG_DEBUG ("do e step in %d", i);
     likelihood += model->_e_step(model->_corpus->at(i),
                                  model->_var_gamma[i],
                                  phi,
                                  ss);
   }
-
-  SM_LOG_NOTICE ("Training [%d-%d] total likelihood %lf", 
+  SM_LOG_NOTICE ("[%d-%d] likelihood %lf", 
                  range.first, range.second, likelihood);
+
   return 0;
 }
