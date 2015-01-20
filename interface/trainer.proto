@@ -1,0 +1,15 @@
+package smpb;
+
+message TrainerResponse{
+    enum RES_TYPE {OK = 0; INVALID = 1; INTERNAL = 2;};
+    required RES_TYPE ret = 1;
+
+    optional uint64 version = 2;
+};
+
+message TrainerRequest {
+    enum CMD_TYPE {CHECK_VERSION = 1; UPDATE = 2;};
+    
+    required CMD_TYPE cmd = 1;
+    repeated string files = 2;
+};
