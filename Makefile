@@ -250,7 +250,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=6892043d5ec656aa8c54bb57b36f0434  COMAKE
+COMAKE_MD5=2fa5897c188a8428a00f3be74511c4de  COMAKE
 
 
 .PHONY:all
@@ -287,6 +287,7 @@ clean:ccpclean
 	rm -rf ./output/include/kvproxy_client.h
 	rm -rf ./output/include/sim_server.h
 	rm -rf ./output/include/mola_wrapper.h
+	rm -rf ./output/include/trainer_server.h
 	rm -rf simserver
 	rm -rf ./output/bin/simserver
 	rm -rf server
@@ -310,6 +311,7 @@ clean:ccpclean
 	rm -rf similarity_repo.o
 	rm -rf similarity_kvproxy_client.o
 	rm -rf similarity_mola_wrapper.o
+	rm -rf similarity_trainer_server.o
 	rm -rf interface/dict.pb.cc
 	rm -rf interface/dict.pb.h
 	rm -rf interface/similarity_dict.pb.o
@@ -322,6 +324,9 @@ clean:ccpclean
 	rm -rf interface/lda.pb.cc
 	rm -rf interface/lda.pb.h
 	rm -rf interface/similarity_lda.pb.o
+	rm -rf interface/trainer.pb.cc
+	rm -rf interface/trainer.pb.h
+	rm -rf interface/similarity_trainer.pb.o
 	rm -rf simserver_sim_server.o
 	rm -rf simserver_sim_server_main.o
 	rm -rf server_server.o
@@ -360,10 +365,12 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_repo.o \
   similarity_kvproxy_client.o \
   similarity_mola_wrapper.o \
+  similarity_trainer_server.o \
   interface/similarity_dict.pb.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
   interface/similarity_lda.pb.o \
+  interface/similarity_trainer.pb.o \
   dictionary.h \
   document.h \
   token.h \
@@ -374,7 +381,8 @@ libsimilarity.a:similarity_dictionary.o \
   concurrent.h \
   kvproxy_client.h \
   sim_server.h \
-  mola_wrapper.h
+  mola_wrapper.h \
+  trainer_server.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_dictionary.o \
   similarity_segment.o \
@@ -392,14 +400,16 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_repo.o \
   similarity_kvproxy_client.o \
   similarity_mola_wrapper.o \
+  similarity_trainer_server.o \
   interface/similarity_dict.pb.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
-  interface/similarity_lda.pb.o
+  interface/similarity_lda.pb.o \
+  interface/similarity_trainer.pb.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
-	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h trainer_server.h ./output/include
 
 simserver:simserver_sim_server.o \
   simserver_sim_server_main.o \
@@ -1018,6 +1028,11 @@ similarity_mola_wrapper.o:mola_wrapper.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_mola_wrapper.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_mola_wrapper.o mola_wrapper.cc
 
+similarity_trainer_server.o:trainer_server.cc \
+  trainer_server.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_trainer_server.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_trainer_server.o trainer_server.cc
+
 interface/dict.pb.cc \
   interface/dict.pb.h:interface/dict.proto
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/dict.pb.cc \
@@ -1079,6 +1094,21 @@ interface/similarity_lda.pb.o:interface/lda.pb.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_lda.pb.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_lda.pb.o interface/lda.pb.cc
 
+interface/trainer.pb.cc \
+  interface/trainer.pb.h:interface/trainer.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/trainer.pb.cc \
+  interface/trainer.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/trainer.proto
+
+interface/trainer.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/trainer.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_trainer.pb.o:interface/trainer.pb.cc \
+  interface/trainer.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_trainer.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_trainer.pb.o interface/trainer.pb.cc
+
 simserver_sim_server.o:sim_server.cc \
   sim_server.h \
   singleton.h \
@@ -1114,7 +1144,8 @@ simserver_sim_server_main.o:sim_server_main.cc \
   test/test_lda.h \
   test/test_main.h \
   similarity.h \
-  mola_wrapper.h
+  mola_wrapper.h \
+  segment.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver_sim_server_main.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o simserver_sim_server_main.o sim_server_main.cc
 

@@ -18,9 +18,20 @@ Corpus::Corpus(Dictionary *dict, uint64_t version) :
 
 }
 
+bool
+Corpus::hasDoc (uint64_t docid) {
+  bool has = false;
+  _docmapLock.AcquireRead();
+  if (_docmap.find(docid) != _docmap.end()) {
+    has = true;
+  }
+  _docmapLock.Release();
+  return has;
+}
 
 int
 Corpus::addDoc( uint64_t docid, const bow_t &bow ) {
+  if (hasDoc(docid)) return 0;
   int newid;
   _docsLock.AcquireWrite();
   _docs.push_back(bow);

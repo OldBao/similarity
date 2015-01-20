@@ -14,6 +14,7 @@ namespace sm {
     
     int truncate(int num_features = 12);
     int addDoc(uint64_t docid, const bow_t& bow);
+    bool hasDoc(uint64_t docid);
     
     size_t size() const;
     size_t maxDocLen() const {return _mdl;}
