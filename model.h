@@ -72,9 +72,24 @@ namespace sm {
     LDAState(LDAState &);
   };
 
-  class LDAModel : public TopicModel {
+  class LDAModel;
+
+  class LDAEWorker : public Thread<std::pair<int, int> >{
   public:
-    LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version = 0);
+    LDAEWorker(LDAModel *model);
+    virtual ~LDAEWorker();
+    virtual int doJob(const std::pair<int, int> &);
+    double **phi;
+    double likelihood;
+    LDAModel *model;
+    LDAState *ss;
+
+  };
+
+  class LDAModel : public TopicModel {
+    friend class LDAEWorker;
+  public:
+    LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version = 0, int eworkers=12);
     virtual ~LDAModel ();
     
     int train();
@@ -90,9 +105,11 @@ namespace sm {
     void getHotestWordsDesc(std::string *desc, int topicid, int nwords = 10, const std::string &encoding="utf8");
     void getHotestWords(bow_t *bow, int topicid, int nwords = 10);
 
+    Corpus *corpus() { return _corpus; }
   private:
     void _init_prob();
     void _em (LDAState *ss);
+    double _merge_ss(LDAState *state);
     void _mle (LDAState *s, int estimate_alpha);
     double _e_step (const bow_t &doc, double *gamma, double **phi, LDAState *ss);
     double _infer(const bow_t& doc, double* var_gamma, double** phi);
@@ -112,8 +129,7 @@ namespace sm {
     uint64_t _version;
     double **_log_prob_w;
     double **_var_gamma;
-    double **_phi;
-
+    vector<LDAEWorker *> _e_workers;
     vector<vector<int> > _topics; 
 
     //test 

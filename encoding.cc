@@ -6,7 +6,7 @@
 using namespace std;
 using namespace sm;
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 4096*16 //16KB
 const char * UTF8 = "UTF8//IGNORE";
 const char * GBK = "GBK//IGNORE";
 const char * WCHAR = "WCHAR_T//IGNORE";

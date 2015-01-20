@@ -26,6 +26,10 @@ namespace sm {
     _internal_Job<T> _job ;
     _job.job = job;
     _job.priority = prior;
+    _emptyLock.Acquire();
+    _done = false;
+    _wait_done = false;
+    _emptyLock.Release();
 
     _jobLock.Acquire();
     _jobQueue.push (_job);
@@ -81,12 +85,12 @@ namespace sm {
   template <typename T>
   void
   Thread<T>::waitAllJobDone(){
-    
     _emptyLock.Acquire();
     _wait_done = true;
     while (!_done) _emptyCond.Wait(_emptyLock, 3000);
+    _wait_done = false;
+    _done = false;
     _emptyLock.Release();
-    stop();
   }
 
 
@@ -120,9 +124,8 @@ namespace sm {
       } else {
         if (_wait_done) {
           _emptyLock.Acquire();
-          _emptyCond.Signal();
-          
           _done = true;
+          _emptyCond.Signal();
           _emptyLock.Release();
         }
 

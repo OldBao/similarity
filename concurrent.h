@@ -66,7 +66,7 @@ namespace sm {
     class Thread {
   public:
     Thread ();
-    ~Thread ();
+    virtual ~Thread ();
 
     void start ();
     void stop ();

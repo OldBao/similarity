@@ -75,7 +75,7 @@ Socket::Recv (void *buffer, size_t cnt) {
   int ret;
 
   while (left > 0) {
-    ret = read (_fd, buffer+cnt-left, left);
+    ret = read (_fd, (char *)buffer+cnt-left, left);
     SM_ASSERT (ret <= left, "ret bytes[%d] can't be more than left[%d]", ret, left);
     
     switch (ret) {
@@ -106,7 +106,7 @@ Socket::Send (const void *buf, size_t cnt) {
   int ret;
 
   while (left > 0) {
-    ret = write (_fd, buf-cnt+left, left);
+    ret = write (_fd, (char *)buf-cnt+left, left);
     
     switch (ret) {
     case -1:
@@ -140,7 +140,7 @@ KvProxyClient::~KvProxyClient(){
 
 int
 KvProxyClient::open(){
-
+    return 0;
 }
 
 int

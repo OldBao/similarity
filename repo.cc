@@ -47,8 +47,10 @@ Repository::waitAllJobDone(){
        iter++)
     {
       (*iter)->waitAllJobDone();
+      (*iter)->stop();
     }
 
+    
 }
 
 int
@@ -107,9 +109,7 @@ Repository::doJob (const string &values) {
 
 int
 Repository::doJob(const string &raw) {
-  string content, title;
   bow_t bow;
-  uint64_t docid;
 
   Document doc;
   if (0 != doc.parseFromJsonRaw(raw)){
@@ -125,11 +125,11 @@ Repository::doJob(const string &raw) {
   _dict.doc2bow (&bow, doc, true);
   bow.pre_handle();
   if (bow.size() == 0) {
-    SM_LOG_DEBUG ("didn't get any words in %lu", docid);
+    SM_LOG_DEBUG ("didn't get any words in %lu", doc.getId());
     return -1;
   }
 
-  return _corpus.addDoc(docid, bow);
+  return _corpus.addDoc(doc.getId(), bow);
 }
 
 

@@ -23,6 +23,7 @@ Corpus::hasDoc (uint64_t docid) {
   bool has = false;
   _docmapLock.AcquireRead();
   if (_docmap.find(docid) != _docmap.end()) {
+    SM_LOG_DEBUG ("docid %d" "already add to corpus", _docmap[docid]);
     has = true;
   }
   _docmapLock.Release();
@@ -41,6 +42,7 @@ Corpus::addDoc( uint64_t docid, const bow_t &bow ) {
 
   _docmapLock.AcquireWrite();
   SM_LOG_DEBUG ("Adding docid %" PRIu64 " to map", docid);
+
   SM_ASSERT (_docmap.find(docid) == _docmap.end(), 
              "docid %" PRIu64 " should not add twice", docid);
 
@@ -157,7 +159,8 @@ Corpus::save(const std::string& path, const std::string &basename){
     return -1;
   }
 
-  SM_LOG_NOTICE ("save corpus [%s] success", fullpath);
+  SM_LOG_NOTICE ("save corpus [%s] success, %zu docs, %d terms", 
+                 fullpath, _docs.size(), _nterms);
   return 0;
 }
 

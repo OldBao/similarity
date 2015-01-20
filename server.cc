@@ -43,6 +43,7 @@ main(int argc, char **argv){
     string url;
     is >> url;
     if (is.eof()) break;
+    cout << "adding url: " << url <<endl;
     repo.addUrl(url);
   }
 

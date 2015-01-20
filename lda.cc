@@ -24,27 +24,33 @@ extern uint32_t randomMT();
 #define myrand() (double) (((unsigned long) randomMT()) / 4294967296.)
 
 
-LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version) :
+LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version, int nworkers) :
   TopicModel(corpus, dict),
   _alpha(0.01), 
   _init_alpha(1.0),
   _estimate_alpha(1), //TODO 1 or 0
   _var_max_iter(20),
-  _var_converged(1e-6),
+  _var_converged(1e-2),
   _em_max_iter(100),
-  _em_converged(1e-4),
+  _em_converged(1e-2),
   _max_alpha_iter(1000),
-  _newton_threshold(1e-10),
+  _newton_threshold(1e-2),
   _ntopics(100),
   _ndocs(_corpus->size()),
   _nterms(corpus->getNTerms()),
   _version(version),
   _log_prob_w(NULL),
-  _var_gamma(NULL),
-  _phi(NULL)
+  _var_gamma(NULL)
 {
   assert (corpus);
   assert (corpus->size() > 0);
+
+  for (int i = 0; i < nworkers; i++) {
+    LDAEWorker *worker = new LDAEWorker(this);
+    _e_workers.push_back (worker);
+    worker->start();
+  }
+
   _init_prob();
 }
 
@@ -65,10 +71,12 @@ LDAModel::_init_prob(){
   for (int i = 0; i < _ndocs; i++)
     _var_gamma[i] = (double *) malloc(sizeof(double) * _ntopics);
 
+  /*
   int max_length = _corpus->maxDocLen();
   _phi = (double **) malloc( sizeof(double*) * max_length);
   for (int i = 0; i < max_length; i++)
     _phi[i] = (double *) malloc(sizeof(double) * _ntopics);
+  */
 }
 
 
@@ -79,19 +87,21 @@ LDAModel::~LDAModel(){
     free (_var_gamma);
   }
 
+  /*
   if (_phi) {
     for (size_t i = 0; i < _corpus->maxDocLen(); i++) free (_phi[i]);
     free (_phi);
-  }
-
-
-
+    }*/
 
   if (_log_prob_w){ 
     for (int i = 0; i < _ntopics; i++) {
       free (_log_prob_w[i]);
     }
     free (_log_prob_w);
+  }
+
+  for (size_t i = 0; i < _e_workers.size(); i++) {
+    delete _e_workers[i];
   }
 }
 
@@ -117,6 +127,28 @@ LDAModel::_cluster(){
   return 0;
 }
 
+double
+LDAModel::_merge_ss(LDAState *ss) {
+  double likelihood = 0.0;
+
+  for (size_t i = 0; i < _e_workers.size(); i++) {
+    LDAEWorker* worker = _e_workers[i];
+    likelihood += worker->likelihood;
+    ss->alpha_suffstats += worker->ss->alpha_suffstats;
+    ss->ndocs = worker->ss->ndocs;
+    for (int j = 0; j < _ntopics; j++) {
+      ss->class_total[j] += worker->ss->class_total[j];
+      for (int n = 0; n < _nterms; n++) {
+        ss->class_word[j][n] += worker->ss->class_word[j][n];
+      }
+    }
+  }
+  
+  SM_LOG_DEBUG ("merged likelihood %lf, state : docs %d alpha: %lf", 
+                likelihood, ss->ndocs, ss->alpha_suffstats);
+  return likelihood;
+}
+
 int 
 LDAModel::train(){
   // initialize model
@@ -125,14 +157,15 @@ LDAModel::train(){
   _alpha = _init_alpha;
 
   _em (ss);
-
+  
+  delete ss;
   return 0;
 }
 
 
 void
 LDAModel::_em(LDAState *ss){
-  int i, d;
+  int i;
   double likelihood, likelihood_old = 0, converged = 1;
 
   // run expectation maximization
@@ -145,13 +178,33 @@ LDAModel::_em(LDAState *ss){
     likelihood = 0;
     
     ss->zero ();
+
     // e-step
-    for (d = 0; d < _ndocs; d++) {
-      likelihood += _e_step(_corpus->at(d),
-                            _var_gamma[d],
-                            _phi,
-                            ss);
+    for (size_t t = 0; t < _e_workers.size(); t++) {
+      _e_workers[t]->ss->zero();
+      _e_workers[t]->likelihood = 0.0;
     }
+
+    int range = _corpus->size() / _e_workers.size() + 1;
+    int t = 0;
+    while (t < (int) _e_workers.size()-1 &&
+           ((t+1)*range-1) < _corpus->size() ) 
+      {
+        pair<int,int> job(t*range, (t+1)*range-1);
+        _e_workers[t]->addJob(job);
+        t++;
+      }
+
+    if ( t * range < (int) _corpus->size() ) {
+      pair<int, int> job(t*range, _corpus->size()-1);
+      _e_workers[t]->addJob(job);
+    }
+
+    for (size_t t = 0; t < _e_workers.size(); t++) {
+      _e_workers[t]->waitAllJobDone();
+    }
+
+    likelihood = _merge_ss(ss);
 
     // m-step
     _mle(ss, _estimate_alpha);
@@ -384,15 +437,15 @@ LDAModel::_e_step(const bow_t& doc,
                   double** phi,
                   LDAState* ss)
 {
-    double likelihood;
-    size_t n;
-    int k;
+  double likelihood;
+  size_t n;
+  int k;
 
-    // posterior inference
-    likelihood = _infer(doc, gamma, phi);
-    // update sufficient statistics
-    double gamma_sum = 0;
-    for (k = 0; k < _ntopics; k++) {
+  // posterior inference
+  likelihood = _infer(doc, gamma, phi);
+  // update sufficient statistics
+  double gamma_sum = 0;
+  for (k = 0; k < _ntopics; k++) {
         gamma_sum += gamma[k];
         ss->alpha_suffstats += digamma(gamma[k]);
     }
@@ -596,6 +649,8 @@ LDAState::LDAState(const Corpus &corpus, int topics):
       class_word[k][n] += 1.0/_nterms + myrand();
       class_total[k] += class_word[k][n];
     }
+
+  SM_LOG_DEBUG ("init with state topics %d", _ntopics);
 }
 
 LDAState::~LDAState(){
@@ -620,4 +675,42 @@ LDAState::zero() {
 
   ndocs = 0;
   alpha_suffstats = 0;
+}
+
+
+LDAEWorker::LDAEWorker(LDAModel *model)
+  : likelihood(0.0),  model(model), ss(NULL)
+{
+  phi = (double **) malloc( sizeof(double*) * model->_corpus->maxDocLen());
+  for (size_t i = 0; i < model->_corpus->maxDocLen(); i++)
+    phi[i] = (double *) malloc(sizeof(double) * model->_ntopics);
+
+  ss = new LDAState (*model->_corpus, model->_ntopics);
+}
+
+
+LDAEWorker::~LDAEWorker() {
+  if (ss) delete ss;
+  if (phi) {
+    for (size_t i = 0; i < model->_corpus->maxDocLen(); i++)
+      free(phi[i]);
+    free(phi);
+  }
+}
+
+int
+LDAEWorker::doJob(const pair<int, int>& range){
+  SM_ASSERT (range.first <= range.second, "range should be [l, g]");
+
+
+  for (int i = range.first; i <= range.second; i++) {
+    likelihood += model->_e_step(model->_corpus->at(i),
+                                 model->_var_gamma[i],
+                                 phi,
+                                 ss);
+  }
+
+  SM_LOG_NOTICE ("Training [%d-%d] total likelihood %lf", 
+                 range.first, range.second, likelihood);
+  return 0;
 }

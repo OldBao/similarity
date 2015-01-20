@@ -11,7 +11,7 @@ using namespace sm;
 Document::Document(const string& encoding) : 
   _content (""), 
   _title(""),
-  _id(-1), 
+  _id((uint64_t)-1), 
   _encoding(encoding)
 {
 
