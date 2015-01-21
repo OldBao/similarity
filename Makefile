@@ -250,7 +250,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=49da68117ccc6a6a8a76e75ec50e6206  COMAKE
+COMAKE_MD5=3655d86adae4b0bac7e69fff2d964df1  COMAKE
 
 
 .PHONY:all
@@ -323,6 +323,9 @@ clean:ccpclean
 	rm -rf interface/trainer.pb.cc
 	rm -rf interface/trainer.pb.h
 	rm -rf interface/similarity_trainer.pb.o
+	rm -rf interface/similarity.pb.cc
+	rm -rf interface/similarity.pb.h
+	rm -rf interface/similarity_similarity.pb.o
 	rm -rf simserver_sim_server.o
 	rm -rf simserver_sim_server_main.o
 	rm -rf server_server.o
@@ -365,6 +368,7 @@ libsimilarity.a:similarity_dictionary.o \
   interface/similarity_bow.pb.o \
   interface/similarity_lda.pb.o \
   interface/similarity_trainer.pb.o \
+  interface/similarity_similarity.pb.o \
   dictionary.h \
   document.h \
   token.h \
@@ -397,7 +401,8 @@ libsimilarity.a:similarity_dictionary.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
   interface/similarity_lda.pb.o \
-  interface/similarity_trainer.pb.o
+  interface/similarity_trainer.pb.o \
+  interface/similarity_similarity.pb.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
@@ -409,17 +414,17 @@ simserver:simserver_sim_server.o \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver[0m']"
 	$(CXX) simserver_sim_server.o \
   simserver_sim_server_main.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
-  ../../../../../../app/mobile/flyflow/server/lib/libenca/output/lib/libenca.a \
-  ../../../../../../app/mobile/flyflow/server/lib/storage/lib/libkvstorage.a \
-  ../../../../../../app/mobile/flyflow/server/lib/storage/lib/libredisstorage.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libhashkit.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libmemcached.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libmemcachedprotocol.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libmemcachedutil.a \
-  ../../../../../../app/search/ksarch/store/neclient/lib/libneclientadapter.a \
-  ../../../../../../app/search/ksarch/store/neclient/lib/libneclientcore.a \
-  ../../../../../../app/search/ksarch/store/neclient/lib/libneclientpool.a \
-  ../../../../../../app/search/ksarch/store/proxy-lib/redis/lib/libredisclient.a \
+  ../../../../../../app/mobile/flyflow/server/lib/libenca/output/liba/libenca.a \
+  ../../../../../../app/mobile/flyflow/server/lib/storage/libkvstorage.a \
+  ../../../../../../app/mobile/flyflow/server/lib/storage/libredisstorage.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libhashkit.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcached.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcachedprotocol.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcachedutil.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientadapter.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientcore.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientpool.a \
+  ../../../../../../app/search/ksarch/store/proxy-lib/redis/libredisclient.a \
   ../../../../../../com-test/itest/tools/fault/output/lib/libfault.a \
   ../../../../../../com-test/itest/tools/fault/output/lib/libfault1.a \
   ../../../../../../com/btest/gtest/output/lib/libgtest.a \
@@ -429,10 +434,10 @@ simserver:simserver_sim_server.o \
   ../../../../../../com/idlcompiler/java/libjava_skeleton.a \
   ../../../../../../com/idlcompiler/parser/libparser.a \
   ../../../../../../com/idlcompiler/php/libphp_skeleton.a \
-  ../../../../../../ibase/gm/zstore/lib/cache/libcache.a \
+  ../../../../../../ibase/gm/zstore/lib/cache/output/lib/libcache.a \
   ../../../../../../ibase/gm/zstore/lib/di/libdi.a \
   ../../../../../../ibase/gm/zstore/lib/file/libfile.a \
-  ../../../../../../ibase/gm/zstore/lib/schema/libschema.a \
+  ../../../../../../ibase/gm/zstore/lib/schema/output/lib/libschema.a \
   ../../../../../../ibase/gm/zstore/lib/snapshot/output/lib/libsnapshot.a \
   ../../../../../../ibase/gm/zstore/lib/utils/libutils.a \
   ../../../../../../ibase/gm/zstore/lib/writebuffer/output/lib/libwritebuffer.a \
@@ -441,12 +446,14 @@ simserver:simserver_sim_server.o \
   ../../../../../../inf/common/esp/output/libesp.a \
   ../../../../../../inf/common/kylin/libkylin.a \
   ../../../../../../inf/common/share/libshare.a \
-  ../../../../../../inf/ds/mola/api/output/lib/libmolaapi.a \
+  ../../../../../../inf/computing/zookeeper/output/lib/libzookeeper_mt.a \
+  ../../../../../../inf/computing/zookeeper/output/lib/libzookeeper_st.a \
+  ../../../../../../inf/ds/mola/api/libmolaapi.a \
   ../../../../../../inf/ds/mola/common/libmola3_common.a \
   ../../../../../../inf/ds/mola/common/libmoladb_common.a \
   ../../../../../../inf/ds/mola/common/output/lib/libbslib.a \
   ../../../../../../inf/ds/mola/common/output/lib/libmola3_idl.a \
-  ../../../../../../inf/ds/mola/metaapi/lib/libmola3_metaapi.a \
+  ../../../../../../inf/ds/mola/metaapi/libmola3_metaapi.a \
   ../../../../../../inf/ds/mola/platform/mlbase/libmlbase.a \
   ../../../../../../lib2-64/bsl/lib/libbsl.a \
   ../../../../../../lib2-64/bsl/lib/libbsl_ResourcePool.a \
@@ -479,14 +486,14 @@ simserver:simserver_sim_server.o \
   ../../../../../../public/comlog-plugin/output/lib/libdfsappender.a \
   ../../../../../../public/configure/libconfig.a \
   ../../../../../../public/connectpool/libconnectpool.a \
-  ../../../../../../public/gm/galileo/output/lib/libgalileo.a \
+  ../../../../../../public/gm/galileo/libgalileo.a \
   ../../../../../../public/gm/galileo/output/lib/libzookeeper_mt.a \
   ../../../../../../public/gm/mola2/libmola.a \
   ../../../../../../public/idlcompiler/output/lib/libmcpack_idl.a \
-  ../../../../../../public/mcpack/output/lib/libmcpack.a \
+  ../../../../../../public/mcpack/libmcpack.a \
   ../../../../../../public/mola/commonapi/libcommonapi.a \
   ../../../../../../public/nshead/libnshead.a \
-  ../../../../../../public/odict/output/libodict.a \
+  ../../../../../../public/odict/libodict.a \
   ../../../../../../public/spreg/libspreg.a \
   ../../../../../../public/ub/output/lib/libub.a \
   ../../../../../../public/ub/output/lib/libub_aserver.a \
@@ -555,17 +562,17 @@ server:server_server.o \
   -lsimilarity
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver[0m']"
 	$(CXX) server_server.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
-  ../../../../../../app/mobile/flyflow/server/lib/libenca/output/lib/libenca.a \
-  ../../../../../../app/mobile/flyflow/server/lib/storage/lib/libkvstorage.a \
-  ../../../../../../app/mobile/flyflow/server/lib/storage/lib/libredisstorage.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libhashkit.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libmemcached.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libmemcachedprotocol.a \
-  ../../../../../../app/search/ksarch/store/libmemcached/lib/libmemcachedutil.a \
-  ../../../../../../app/search/ksarch/store/neclient/lib/libneclientadapter.a \
-  ../../../../../../app/search/ksarch/store/neclient/lib/libneclientcore.a \
-  ../../../../../../app/search/ksarch/store/neclient/lib/libneclientpool.a \
-  ../../../../../../app/search/ksarch/store/proxy-lib/redis/lib/libredisclient.a \
+  ../../../../../../app/mobile/flyflow/server/lib/libenca/output/liba/libenca.a \
+  ../../../../../../app/mobile/flyflow/server/lib/storage/libkvstorage.a \
+  ../../../../../../app/mobile/flyflow/server/lib/storage/libredisstorage.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libhashkit.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcached.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcachedprotocol.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcachedutil.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientadapter.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientcore.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientpool.a \
+  ../../../../../../app/search/ksarch/store/proxy-lib/redis/libredisclient.a \
   ../../../../../../com-test/itest/tools/fault/output/lib/libfault.a \
   ../../../../../../com-test/itest/tools/fault/output/lib/libfault1.a \
   ../../../../../../com/btest/gtest/output/lib/libgtest.a \
@@ -575,10 +582,10 @@ server:server_server.o \
   ../../../../../../com/idlcompiler/java/libjava_skeleton.a \
   ../../../../../../com/idlcompiler/parser/libparser.a \
   ../../../../../../com/idlcompiler/php/libphp_skeleton.a \
-  ../../../../../../ibase/gm/zstore/lib/cache/libcache.a \
+  ../../../../../../ibase/gm/zstore/lib/cache/output/lib/libcache.a \
   ../../../../../../ibase/gm/zstore/lib/di/libdi.a \
   ../../../../../../ibase/gm/zstore/lib/file/libfile.a \
-  ../../../../../../ibase/gm/zstore/lib/schema/libschema.a \
+  ../../../../../../ibase/gm/zstore/lib/schema/output/lib/libschema.a \
   ../../../../../../ibase/gm/zstore/lib/snapshot/output/lib/libsnapshot.a \
   ../../../../../../ibase/gm/zstore/lib/utils/libutils.a \
   ../../../../../../ibase/gm/zstore/lib/writebuffer/output/lib/libwritebuffer.a \
@@ -587,12 +594,14 @@ server:server_server.o \
   ../../../../../../inf/common/esp/output/libesp.a \
   ../../../../../../inf/common/kylin/libkylin.a \
   ../../../../../../inf/common/share/libshare.a \
-  ../../../../../../inf/ds/mola/api/output/lib/libmolaapi.a \
+  ../../../../../../inf/computing/zookeeper/output/lib/libzookeeper_mt.a \
+  ../../../../../../inf/computing/zookeeper/output/lib/libzookeeper_st.a \
+  ../../../../../../inf/ds/mola/api/libmolaapi.a \
   ../../../../../../inf/ds/mola/common/libmola3_common.a \
   ../../../../../../inf/ds/mola/common/libmoladb_common.a \
   ../../../../../../inf/ds/mola/common/output/lib/libbslib.a \
   ../../../../../../inf/ds/mola/common/output/lib/libmola3_idl.a \
-  ../../../../../../inf/ds/mola/metaapi/lib/libmola3_metaapi.a \
+  ../../../../../../inf/ds/mola/metaapi/libmola3_metaapi.a \
   ../../../../../../inf/ds/mola/platform/mlbase/libmlbase.a \
   ../../../../../../lib2-64/bsl/lib/libbsl.a \
   ../../../../../../lib2-64/bsl/lib/libbsl_ResourcePool.a \
@@ -625,14 +634,14 @@ server:server_server.o \
   ../../../../../../public/comlog-plugin/output/lib/libdfsappender.a \
   ../../../../../../public/configure/libconfig.a \
   ../../../../../../public/connectpool/libconnectpool.a \
-  ../../../../../../public/gm/galileo/output/lib/libgalileo.a \
+  ../../../../../../public/gm/galileo/libgalileo.a \
   ../../../../../../public/gm/galileo/output/lib/libzookeeper_mt.a \
   ../../../../../../public/gm/mola2/libmola.a \
   ../../../../../../public/idlcompiler/output/lib/libmcpack_idl.a \
-  ../../../../../../public/mcpack/output/lib/libmcpack.a \
+  ../../../../../../public/mcpack/libmcpack.a \
   ../../../../../../public/mola/commonapi/libcommonapi.a \
   ../../../../../../public/nshead/libnshead.a \
-  ../../../../../../public/odict/output/libodict.a \
+  ../../../../../../public/odict/libodict.a \
   ../../../../../../public/spreg/libspreg.a \
   ../../../../../../public/ub/output/lib/libub.a \
   ../../../../../../public/ub/output/lib/libub_aserver.a \
@@ -823,7 +832,8 @@ similarity_similarity.o:similarity.cc \
   log.h \
   model.h \
   test/test_lda.h \
-  test/test_main.h
+  test/test_main.h \
+  interface/similarity.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_similarity.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_similarity.o similarity.cc
 
@@ -951,6 +961,21 @@ interface/similarity_trainer.pb.o:interface/trainer.pb.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_trainer.pb.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_trainer.pb.o interface/trainer.pb.cc
 
+interface/similarity.pb.cc \
+  interface/similarity.pb.h:interface/similarity.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity.pb.cc \
+  interface/similarity.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/similarity.proto
+
+interface/similarity.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_similarity.pb.o:interface/similarity.pb.cc \
+  interface/similarity.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_similarity.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_similarity.pb.o interface/similarity.pb.cc
+
 simserver_sim_server.o:sim_server.cc \
   sim_server.h \
   singleton.h \
@@ -1006,7 +1031,8 @@ server_server.o:server.cc \
   singleton.h \
   model.h \
   test/test_lda.h \
-  test/test_main.h
+  test/test_main.h \
+  similarity.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver_server.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o server_server.o server.cc
 

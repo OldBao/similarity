@@ -197,11 +197,7 @@ SimServerDataManager::registerSimServer(SimServer *server) {
 
 
 SimServerData::SimServerData(uint64_t version):
-<<<<<<< HEAD
-  _version (version), _corpus(NULL), _dict(NULL), _model(NULL), _sim(NULL)
-=======
   _version (version), _corpus(NULL), _dict(NULL) ,_model(NULL), _sim(NULL)
->>>>>>> 054a847b50093c245892394c15f125b7fc9f796e
 {
 
 }
