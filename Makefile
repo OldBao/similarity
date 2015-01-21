@@ -250,7 +250,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=49da68117ccc6a6a8a76e75ec50e6206  COMAKE
+COMAKE_MD5=3655d86adae4b0bac7e69fff2d964df1  COMAKE
 
 
 .PHONY:all
@@ -323,6 +323,9 @@ clean:ccpclean
 	rm -rf interface/trainer.pb.cc
 	rm -rf interface/trainer.pb.h
 	rm -rf interface/similarity_trainer.pb.o
+	rm -rf interface/similarity.pb.cc
+	rm -rf interface/similarity.pb.h
+	rm -rf interface/similarity_similarity.pb.o
 	rm -rf simserver_sim_server.o
 	rm -rf simserver_sim_server_main.o
 	rm -rf server_server.o
@@ -365,6 +368,7 @@ libsimilarity.a:similarity_dictionary.o \
   interface/similarity_bow.pb.o \
   interface/similarity_lda.pb.o \
   interface/similarity_trainer.pb.o \
+  interface/similarity_similarity.pb.o \
   dictionary.h \
   document.h \
   token.h \
@@ -397,7 +401,8 @@ libsimilarity.a:similarity_dictionary.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
   interface/similarity_lda.pb.o \
-  interface/similarity_trainer.pb.o
+  interface/similarity_trainer.pb.o \
+  interface/similarity_similarity.pb.o
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
@@ -827,7 +832,8 @@ similarity_similarity.o:similarity.cc \
   log.h \
   model.h \
   test/test_lda.h \
-  test/test_main.h
+  test/test_main.h \
+  interface/similarity.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_similarity.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_similarity.o similarity.cc
 
@@ -954,6 +960,21 @@ interface/similarity_trainer.pb.o:interface/trainer.pb.cc \
   interface/trainer.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_trainer.pb.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_trainer.pb.o interface/trainer.pb.cc
+
+interface/similarity.pb.cc \
+  interface/similarity.pb.h:interface/similarity.proto
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity.pb.cc \
+  interface/similarity.pb.h[0m']"
+	../../../../../../third-64/protobuf/bin/protoc --cpp_out=interface --proto_path=interface  interface/similarity.proto
+
+interface/similarity.proto:
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity.proto[0m']"
+	@echo "ALREADY BUILT"
+
+interface/similarity_similarity.pb.o:interface/similarity.pb.cc \
+  interface/similarity.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_similarity.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_similarity.pb.o interface/similarity.pb.cc
 
 simserver_sim_server.o:sim_server.cc \
   sim_server.h \

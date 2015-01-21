@@ -89,7 +89,7 @@ namespace sm {
   class LDAModel : public TopicModel {
     friend class LDAEWorker;
   public:
-    LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version = 0, int eworkers=12);
+    LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version=0, int eworkers=12);
     virtual ~LDAModel ();
     
     int train();

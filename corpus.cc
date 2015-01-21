@@ -41,7 +41,9 @@ Corpus::addDoc( uint64_t docid, const bow_t &bow ) {
   _docsLock.Release();
 
   _docmapLock.AcquireWrite();
+  /*
   SM_LOG_DEBUG ("Adding docid %" PRIu64 " to map", docid);
+  */
 
   SM_ASSERT (_docmap.find(docid) == _docmap.end(), 
              "docid %" PRIu64 " should not add twice", docid);
@@ -180,6 +182,7 @@ Corpus::load(const std::string &path, const std::string &basename){
   google::protobuf::io::CodedInputStream cis(&iis);
   smpb::Corpus deserial_corpus;
 
+  cis.SetTotalBytesLimit(1024*1024*1024, 1024*1024*1024);
   if (!deserial_corpus.ParseFromCodedStream(&cis)){
     SM_LOG_WARNING ("parse corpus file %s error", fullpath);
     return -1;
