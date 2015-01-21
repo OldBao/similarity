@@ -12,6 +12,7 @@ using namespace std;
 const static int ERROR_CODE_##message = -code;          \
 const static char *ERROR_MSG_##message = #message;   \
 */
+
 #define DEF_ERROR(code, message)                         \
   const static char *ERROR_JSON_##message = "{ \"error_code\" : -" #code ", \"error_message\" : \"" #message " \"}";
 
@@ -150,8 +151,7 @@ SimServerDataManager::~SimServerDataManager(){
 }
 
 int
-SimServerDataManager::init (const string& basepath) {
-  _basepath = basepath;
+SimServerDataManager::init () {
   _local_version = 0; //TODO check dir
 
   return 0;
@@ -170,7 +170,7 @@ SimServerDataManager::checkVersion(){
       data = _datas[remote_version];
     } else {
       data = new SimServerData(remote_version);    
-      if (0 != data->load (_basepath)){
+      if (0 != data->load()){
         delete data;
         return -1;
       }
@@ -299,36 +299,28 @@ SimServerData::getVersion(){
 
 
 int
-SimServerData::load(const string &path) {
+SimServerData::load() {
   _dict = new Dictionary(_version);
-  if ( 0 != _dict->load(path, "similarity")){
+  if ( 0 != _dict->load("similarity")){
     SM_LOG_DEBUG ("load dict error");
     return -1;
   }
   
-  _corpus = new Corpus();
-  if ( 0 != _corpus->load(path, "similarity")){
+  _corpus = new Corpus(_dict, _version);
+  if ( 0 != _corpus->load("similarity")){
     SM_LOG_DEBUG ( "load corpus error");
     return -1;
   }
 
   _model = new LDAModel(_corpus, _dict);
-  if ( 0 != _model->load (path, "similarity")){
+  if ( 0 != _model->load()){
     SM_LOG_DEBUG( "load lda error");
     return -1;
   }
 
   _sim = new TopicSimilarity (_model, _corpus, _dict);
 
-  //SM_LOG_NOTICE ("new version %" PRIu64 " Begin training", _version);
-  /*
-  for (int i = 0; i < _model->getNTopics(); i++) {
-    _sim->calculate (i);
-  }
-
-  _sim->waitAllJobDone();
-  */
-  if (0 != _sim->load (path, "similarity")) {
+  if (0 != _sim->load ()) {
     SM_LOG_WARNING ("load sim model error");
     return -1;
   }

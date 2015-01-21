@@ -51,7 +51,7 @@ namespace sm {
   class TopicSimilarity : public Similarity {
   public:
     TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, uint64_t version = 0);
-    ~TopicSimilarity();
+    virtual ~TopicSimilarity();
 
     virtual int calculate (int64_t topicid);
 
@@ -71,10 +71,11 @@ namespace sm {
    
     virtual void waitAllJobDone();
     
-    int save(const std::string &path, const std::string &file);
-    int load(const std::string &path, const std::string &file);
+    int save();
+    int load();
 
   private:
+    std::string _model_path, _model_name;
     uint64_t _version;
     TopicModel *_model;
     Dictionary *_dict;

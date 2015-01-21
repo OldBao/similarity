@@ -32,7 +32,7 @@ namespace sm {
 
   public :
     SimServerData(uint64_t version);
-    int load(const std::string& path);
+    int load();
     uint64_t getVersion();
     ~SimServerData();
 
@@ -80,14 +80,13 @@ namespace sm {
     SM_DECLARE_SINGLETON (SimServerDataManager);
 
   public:
-    int init(const std::string &basepath);
+    int init();
     int registerSimServer(SimServer *server);
 
     int checkVersion();
     int force_update (uint64_t version = -1); //update to newest
 
   private:
-    std::string _basepath;
     uint64_t _local_version;
     std::map<uint64_t, SimServerData *> _datas;
     SimServer * _server;

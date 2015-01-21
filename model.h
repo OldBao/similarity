@@ -16,8 +16,8 @@ namespace sm {
     virtual int train() = 0;
     virtual int inference (const bow_t &src, bow_t *ret, bool normalized=false) = 0;
     virtual int inference (const Corpus& corpus, Corpus *ret, bool normalized=false) = 0;
-    virtual int save (const std::string &path, const std::string &name) = 0;
-    virtual int load (const std::string &path, const std::string &name) = 0;
+    virtual int save () = 0;
+    virtual int load () = 0;
 
   protected:
     Dictionary *_dict;
@@ -51,8 +51,12 @@ namespace sm {
     int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
     
     const std::vector<double> idf() {return _idf;}
-    virtual int save(const std::string& __attribute__((unused)), const std::string & __attribute__((unused))) {return 0;}
-    virtual int load(const std::string& __attribute__((unused)), const std::string & __attribute__((unused))) {return 0;}
+    virtual int save () {
+      return 0;
+    }
+    virtual int load () {
+      return 0;
+    }
   };
 
 
@@ -97,8 +101,9 @@ namespace sm {
     int inference (const Corpus& corpus, Corpus *ret, bool normalized=false);
 
     virtual int getNTopics() {return _ntopics;}
-    virtual int save(const std::string &path, const std::string &name);
-    virtual int load(const std::string &path, const std::string &name);
+    virtual int save();
+
+    virtual int load();
 
     virtual int getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold=0.5, int max_result=3);
     virtual int getDocsOfTopic (vector<int> *ret, int topicid = -1);
@@ -116,6 +121,8 @@ namespace sm {
     double _compute_likelihood(const bow_t& doc, double** phi, double* var_gamma);
     double _opt_alpha(double ss, int D, int K);
     int _cluster();
+    std::string _model_path, _model_name;
+
     double _alpha;
     double _init_alpha;
     int _estimate_alpha;

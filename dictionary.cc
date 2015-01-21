@@ -5,6 +5,7 @@
 #include "log.h"
 #include "dictionary.h"
 #include "encoding.h"
+#include "configurable.h"
 #include "interface/dict.pb.h"
 
 using namespace sm;
@@ -13,7 +14,13 @@ using namespace std;
 Dictionary::Dictionary (uint64_t version) :
   _nPos(0), _nnz(0), _version(version)
 {
-
+    SM_CONFIG_BEGIN(global)
+    SM_CONFIG_PROP_STR(model_path, "./model");
+    SM_CONFIG_END
+     
+    SM_CONFIG_BEGIN(dict)
+    SM_CONFIG_PROP_STR(encoding, "UTF8");
+    SM_CONFIG_END
 }
 
 Dictionary::~Dictionary(){
@@ -193,16 +200,18 @@ Dictionary::at(size_t id) const {
 
 
 int
-Dictionary::save(const std::string& path, const std::string &basename, const std::string &encoding){
+Dictionary::save(const std::string &name) {
   rwtrans_func_t *w;
-  w = get_rwtrans(encoding);
+  w = get_rwtrans(_encoding);
   assert (w);
 
   char fullpath[PATH_MAX];
   if (_version != 0) {
-    snprintf (fullpath, PATH_MAX, "%s/%s.dict.%lu", path.c_str(), basename.c_str(), _version);
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict.%lu", 
+    _model_path.c_str(), name.c_str(), _version);
   } else {
-    snprintf (fullpath, PATH_MAX, "%s/%s.dict", path.c_str(), basename.c_str());
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict", 
+    _model_path.c_str(), name.c_str());
   }
 
   ofstream os(fullpath);
@@ -234,12 +243,14 @@ Dictionary::save(const std::string& path, const std::string &basename, const std
 }
 
 int
-Dictionary::load (const std::string &path, const std::string &base) {
+Dictionary::load(const std::string &name) {
   char fullpath[PATH_MAX];
   if (_version != 0) {
-    snprintf (fullpath, PATH_MAX, "%s/%s.dict.%lu", path.c_str(), base.c_str(), _version);
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict.%lu", 
+    _model_path.c_str(), name.c_str(), _version);
   } else {
-    snprintf (fullpath, PATH_MAX, "%s/%s.dict", path.c_str(), base.c_str());
+    snprintf (fullpath, PATH_MAX, "%s/%s.dict", 
+    _model_path.c_str(), name.c_str());
   }
 
   ifstream is(fullpath);

@@ -21,7 +21,9 @@ MolaEngineManager::getEngine(){
 
 int 
 MolaEngineManager::init(const string &path, const std::string &conf) {
-  return _engine.init("./conf", "commonapi_mcobrowser.conf", NULL);
+  int ret = _engine.init(path.c_str(), conf.c_str(), NULL) >= 0;
+  if (ret < 0) return -1;
+  return 0;
 }
 
 

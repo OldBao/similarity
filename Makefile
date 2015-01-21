@@ -4,12 +4,12 @@ ifeq ($(shell uname -m),x86_64)
 CC=gcc
 CXX=g++
 CXXFLAGS=-g \
-  -O0 \
+  -O2 \
   -pipe \
   -W \
   -Wall \
   -fPIC \
-  -DDEBUG
+  -DNDEBUG
 CFLAGS=
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
@@ -250,11 +250,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=3655d86adae4b0bac7e69fff2d964df1  COMAKE
+COMAKE_MD5=cd47cfc07fe7f2de9ec02ca6d6924905  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check libsimilarity.a simserver server test 
+all:comake2_makefile_check libsimilarity.a trainer_server sim_server offline_trainer test 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -287,10 +287,14 @@ clean:ccpclean
 	rm -rf ./output/include/kvproxy_client.h
 	rm -rf ./output/include/sim_server.h
 	rm -rf ./output/include/mola_wrapper.h
-	rm -rf simserver
-	rm -rf ./output/bin/simserver
-	rm -rf server
-	rm -rf ./output/bin/server
+	rm -rf ./output/include/configurable.h
+	rm -rf ./output/include/cmdline.h
+	rm -rf trainer_server
+	rm -rf ./output/bin/trainer_server
+	rm -rf sim_server
+	rm -rf ./output/bin/sim_server
+	rm -rf offline_trainer
+	rm -rf ./output/bin/offline_trainer
 	$(MAKE) -C test clean
 	rm -rf similarity_dictionary.o
 	rm -rf similarity_segment.o
@@ -308,6 +312,8 @@ clean:ccpclean
 	rm -rf similarity_repo.o
 	rm -rf similarity_kvproxy_client.o
 	rm -rf similarity_mola_wrapper.o
+	rm -rf similarity_configurable.o
+	rm -rf similarity_cmdline.o
 	rm -rf interface/dict.pb.cc
 	rm -rf interface/dict.pb.h
 	rm -rf interface/similarity_dict.pb.o
@@ -326,9 +332,10 @@ clean:ccpclean
 	rm -rf interface/similarity.pb.cc
 	rm -rf interface/similarity.pb.h
 	rm -rf interface/similarity_similarity.pb.o
-	rm -rf simserver_sim_server.o
-	rm -rf simserver_sim_server_main.o
-	rm -rf server_server.o
+	rm -rf trainer_server_trainer_server_main.o
+	rm -rf sim_server_sim_server.o
+	rm -rf sim_server_sim_server_main.o
+	rm -rf offline_trainer_offline_trainer.o
 
 .PHONY:dist
 dist:
@@ -363,6 +370,8 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_repo.o \
   similarity_kvproxy_client.o \
   similarity_mola_wrapper.o \
+  similarity_configurable.o \
+  similarity_cmdline.o \
   interface/similarity_dict.pb.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
@@ -379,7 +388,9 @@ libsimilarity.a:similarity_dictionary.o \
   concurrent.h \
   kvproxy_client.h \
   sim_server.h \
-  mola_wrapper.h
+  mola_wrapper.h \
+  configurable.h \
+  cmdline.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_dictionary.o \
   similarity_segment.o \
@@ -397,6 +408,8 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_repo.o \
   similarity_kvproxy_client.o \
   similarity_mola_wrapper.o \
+  similarity_configurable.o \
+  similarity_cmdline.o \
   interface/similarity_dict.pb.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
@@ -406,14 +419,12 @@ libsimilarity.a:similarity_dictionary.o \
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
-	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h configurable.h cmdline.h ./output/include
 
-simserver:simserver_sim_server.o \
-  simserver_sim_server_main.o \
+trainer_server:trainer_server_trainer_server_main.o \
   -lsimilarity
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver[0m']"
-	$(CXX) simserver_sim_server.o \
-  simserver_sim_server_main.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrainer_server[0m']"
+	$(CXX) trainer_server_trainer_server_main.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
   ../../../../../../app/mobile/flyflow/server/lib/libenca/output/liba/libenca.a \
   ../../../../../../app/mobile/flyflow/server/lib/storage/libkvstorage.a \
   ../../../../../../app/mobile/flyflow/server/lib/storage/libredisstorage.a \
@@ -554,14 +565,16 @@ simserver:simserver_sim_server.o \
   ../../../../../../third-64/zlib/lib/libz.a -lpthread \
   -lcrypto \
   -lrt \
-  -L. -Xlinker "-)" -o simserver
+  -L. -Xlinker "-)" -o trainer_server
 	mkdir -p ./output/bin
-	cp -f --link simserver ./output/bin
+	cp -f --link trainer_server ./output/bin
 
-server:server_server.o \
+sim_server:sim_server_sim_server.o \
+  sim_server_sim_server_main.o \
   -lsimilarity
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver[0m']"
-	$(CXX) server_server.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim_server[0m']"
+	$(CXX) sim_server_sim_server.o \
+  sim_server_sim_server_main.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
   ../../../../../../app/mobile/flyflow/server/lib/libenca/output/liba/libenca.a \
   ../../../../../../app/mobile/flyflow/server/lib/storage/libkvstorage.a \
   ../../../../../../app/mobile/flyflow/server/lib/storage/libredisstorage.a \
@@ -702,9 +715,157 @@ server:server_server.o \
   ../../../../../../third-64/zlib/lib/libz.a -lpthread \
   -lcrypto \
   -lrt \
-  -L. -Xlinker "-)" -o server
+  -L. -Xlinker "-)" -o sim_server
 	mkdir -p ./output/bin
-	cp -f --link server ./output/bin
+	cp -f --link sim_server ./output/bin
+
+offline_trainer:offline_trainer_offline_trainer.o \
+  -lsimilarity
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40moffline_trainer[0m']"
+	$(CXX) offline_trainer_offline_trainer.o -Xlinker "-(" -lsimilarity ../../../../../../app/mobile/flyflow/server/lib/common/libcommon.a \
+  ../../../../../../app/mobile/flyflow/server/lib/libenca/output/liba/libenca.a \
+  ../../../../../../app/mobile/flyflow/server/lib/storage/libkvstorage.a \
+  ../../../../../../app/mobile/flyflow/server/lib/storage/libredisstorage.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libhashkit.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcached.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcachedprotocol.a \
+  ../../../../../../app/search/ksarch/store/libmemcached/output/lib/libmemcachedutil.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientadapter.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientcore.a \
+  ../../../../../../app/search/ksarch/store/neclient/libneclientpool.a \
+  ../../../../../../app/search/ksarch/store/proxy-lib/redis/libredisclient.a \
+  ../../../../../../com-test/itest/tools/fault/output/lib/libfault.a \
+  ../../../../../../com-test/itest/tools/fault/output/lib/libfault1.a \
+  ../../../../../../com/btest/gtest/output/lib/libgtest.a \
+  ../../../../../../com/btest/gtest/output/lib/libgtest_main.a \
+  ../../../../../../com/idlcompiler/astyle/libastyle.a \
+  ../../../../../../com/idlcompiler/cxx/libskeleton.a \
+  ../../../../../../com/idlcompiler/java/libjava_skeleton.a \
+  ../../../../../../com/idlcompiler/parser/libparser.a \
+  ../../../../../../com/idlcompiler/php/libphp_skeleton.a \
+  ../../../../../../ibase/gm/zstore/lib/cache/output/lib/libcache.a \
+  ../../../../../../ibase/gm/zstore/lib/di/libdi.a \
+  ../../../../../../ibase/gm/zstore/lib/file/libfile.a \
+  ../../../../../../ibase/gm/zstore/lib/schema/output/lib/libschema.a \
+  ../../../../../../ibase/gm/zstore/lib/snapshot/output/lib/libsnapshot.a \
+  ../../../../../../ibase/gm/zstore/lib/utils/libutils.a \
+  ../../../../../../ibase/gm/zstore/lib/writebuffer/output/lib/libwritebuffer.a \
+  ../../../../../../ibase/gm/zstore/output/lib/libzstore.a \
+  ../../../../../../inf/common/esp/esp.a \
+  ../../../../../../inf/common/esp/output/libesp.a \
+  ../../../../../../inf/common/kylin/libkylin.a \
+  ../../../../../../inf/common/share/libshare.a \
+  ../../../../../../inf/computing/zookeeper/output/lib/libzookeeper_mt.a \
+  ../../../../../../inf/computing/zookeeper/output/lib/libzookeeper_st.a \
+  ../../../../../../inf/ds/mola/api/libmolaapi.a \
+  ../../../../../../inf/ds/mola/common/libmola3_common.a \
+  ../../../../../../inf/ds/mola/common/libmoladb_common.a \
+  ../../../../../../inf/ds/mola/common/output/lib/libbslib.a \
+  ../../../../../../inf/ds/mola/common/output/lib/libmola3_idl.a \
+  ../../../../../../inf/ds/mola/metaapi/libmola3_metaapi.a \
+  ../../../../../../inf/ds/mola/platform/mlbase/libmlbase.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_ResourcePool.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_archive.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_buffer.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_check_cast.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_exception.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_pool.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_utils.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var_implement.a \
+  ../../../../../../lib2-64/bsl/lib/libbsl_var_utils.a \
+  ../../../../../../lib2-64/ccode/lib/libulccode.a \
+  ../../../../../../lib2-64/dict/lib/libuldict.a \
+  ../../../../../../lib2-64/libcrf/lib/libcrf.a \
+  ../../../../../../lib2-64/others-ex/lib/libullib_ex.a \
+  ../../../../../../lib2-64/postag/lib/libpostag.a \
+  ../../../../../../lib2-64/string/lib/libstring.a \
+  ../../../../../../lib2-64/ullib/lib/libullib.a \
+  ../../../../../../lib2-64/wordseg/libsegment.a \
+  ../../../../../../op/oped/noah/webfoot/naming-lib/output/lib/libwebfoot_naming.a \
+  ../../../../../../public/bslext/output/lib/libbsl_bml.a \
+  ../../../../../../public/bslext/output/lib/libbsl_containers_utils.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_scripting.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_serializer.a \
+  ../../../../../../public/bslext/output/lib/libbsl_var_vscript.a \
+  ../../../../../../public/bslext/output/lib/libbsl_vs.a \
+  ../../../../../../public/bslext/output/lib/libbslext.a \
+  ../../../../../../public/comlog-plugin/libcomlog.a \
+  ../../../../../../public/comlog-plugin/output/lib/libdfsappender.a \
+  ../../../../../../public/configure/libconfig.a \
+  ../../../../../../public/connectpool/libconnectpool.a \
+  ../../../../../../public/gm/galileo/libgalileo.a \
+  ../../../../../../public/gm/galileo/output/lib/libzookeeper_mt.a \
+  ../../../../../../public/gm/mola2/libmola.a \
+  ../../../../../../public/idlcompiler/output/lib/libmcpack_idl.a \
+  ../../../../../../public/mcpack/libmcpack.a \
+  ../../../../../../public/mola/commonapi/libcommonapi.a \
+  ../../../../../../public/nshead/libnshead.a \
+  ../../../../../../public/odict/libodict.a \
+  ../../../../../../public/spreg/libspreg.a \
+  ../../../../../../public/ub/output/lib/libub.a \
+  ../../../../../../public/ub/output/lib/libub_aserver.a \
+  ../../../../../../public/ub/output/lib/libub_client.a \
+  ../../../../../../public/ub/output/lib/libub_conf.a \
+  ../../../../../../public/ub/output/lib/libub_galileo.a \
+  ../../../../../../public/ub/output/lib/libub_log.a \
+  ../../../../../../public/ub/output/lib/libub_misc.a \
+  ../../../../../../public/ub/output/lib/libub_monitor.a \
+  ../../../../../../public/ub/output/lib/libub_naming.a \
+  ../../../../../../public/ub/output/lib/libub_server.a \
+  ../../../../../../public/ub/output/lib/libubex.a \
+  ../../../../../../public/ub/output/lib/libubfw.a \
+  ../../../../../../public/uconv/libuconv.a \
+  ../../../../../../quality/autotest/bmock/output/lib/libbmock.a \
+  ../../../../../../quality/autotest/bmock/output/lib/libgmock.a \
+  ../../../../../../quality/autotest/reportlib/cpp/libautotest.a \
+  ../../../../../../third-64/boost/lib/libboost_atomic.a \
+  ../../../../../../third-64/boost/lib/libboost_chrono.a \
+  ../../../../../../third-64/boost/lib/libboost_container.a \
+  ../../../../../../third-64/boost/lib/libboost_context.a \
+  ../../../../../../third-64/boost/lib/libboost_coroutine.a \
+  ../../../../../../third-64/boost/lib/libboost_date_time.a \
+  ../../../../../../third-64/boost/lib/libboost_exception.a \
+  ../../../../../../third-64/boost/lib/libboost_filesystem.a \
+  ../../../../../../third-64/boost/lib/libboost_graph.a \
+  ../../../../../../third-64/boost/lib/libboost_locale.a \
+  ../../../../../../third-64/boost/lib/libboost_log_setup.a \
+  ../../../../../../third-64/boost/lib/libboost_math_c99.a \
+  ../../../../../../third-64/boost/lib/libboost_math_c99f.a \
+  ../../../../../../third-64/boost/lib/libboost_math_c99l.a \
+  ../../../../../../third-64/boost/lib/libboost_math_tr1.a \
+  ../../../../../../third-64/boost/lib/libboost_math_tr1f.a \
+  ../../../../../../third-64/boost/lib/libboost_math_tr1l.a \
+  ../../../../../../third-64/boost/lib/libboost_prg_exec_monitor.a \
+  ../../../../../../third-64/boost/lib/libboost_program_options.a \
+  ../../../../../../third-64/boost/lib/libboost_python.a \
+  ../../../../../../third-64/boost/lib/libboost_random.a \
+  ../../../../../../third-64/boost/lib/libboost_regex.a \
+  ../../../../../../third-64/boost/lib/libboost_serialization.a \
+  ../../../../../../third-64/boost/lib/libboost_signals.a \
+  ../../../../../../third-64/boost/lib/libboost_system.a \
+  ../../../../../../third-64/boost/lib/libboost_test_exec_monitor.a \
+  ../../../../../../third-64/boost/lib/libboost_thread.a \
+  ../../../../../../third-64/boost/lib/libboost_timer.a \
+  ../../../../../../third-64/boost/lib/libboost_unit_test_framework.a \
+  ../../../../../../third-64/boost/lib/libboost_wave.a \
+  ../../../../../../third-64/boost/lib/libboost_wserialization.a \
+  ../../../../../../third-64/gtest/lib/libgtest.a \
+  ../../../../../../third-64/gtest/lib/libgtest_main.a \
+  ../../../../../../third-64/json-cpp/lib/libjson_libmt.a \
+  ../../../../../../third-64/pcre/lib/libpcre.a \
+  ../../../../../../third-64/pcre/lib/libpcrecpp.a \
+  ../../../../../../third-64/pcre/lib/libpcreposix.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf-lite.a \
+  ../../../../../../third-64/protobuf/lib/libprotobuf.a \
+  ../../../../../../third-64/protobuf/lib/libprotoc.a \
+  ../../../../../../third-64/zlib/lib/libz.a -lpthread \
+  -lcrypto \
+  -lrt \
+  -L. -Xlinker "-)" -o offline_trainer
+	mkdir -p ./output/bin
+	cp -f --link offline_trainer ./output/bin
 
 .PHONY:test
 test:
@@ -722,6 +883,8 @@ similarity_dictionary.o:dictionary.cc \
   concurrent.h \
   concurrent.hpp \
   encoding.h \
+  configurable.h \
+  singleton.h \
   interface/dict.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_dictionary.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_dictionary.o dictionary.cc
@@ -733,7 +896,8 @@ similarity_segment.o:segment.cc \
   singleton.h \
   concurrent.h \
   concurrent.hpp \
-  encoding.h
+  encoding.h \
+  configurable.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_segment.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_segment.o segment.cc
 
@@ -774,6 +938,8 @@ similarity_corpus.o:corpus.cc \
   model.h \
   test/test_lda.h \
   test/test_main.h \
+  configurable.h \
+  singleton.h \
   interface/corpus.pb.h \
   interface/bow.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_corpus.o[0m']"
@@ -807,7 +973,9 @@ similarity_lda.o:lda.cc \
   test/test_lda.h \
   test/test_main.h \
   encoding.h \
-  interface/lda.pb.h
+  interface/lda.pb.h \
+  configurable.h \
+  singleton.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_lda.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_lda.o lda.cc
 
@@ -833,7 +1001,9 @@ similarity_similarity.o:similarity.cc \
   model.h \
   test/test_lda.h \
   test/test_main.h \
-  interface/similarity.pb.h
+  interface/similarity.pb.h \
+  configurable.h \
+  singleton.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_similarity.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_similarity.o similarity.cc
 
@@ -864,7 +1034,9 @@ similarity_repo.o:repo.cc \
   encoding.h \
   model.h \
   test/test_lda.h \
-  test/test_main.h
+  test/test_main.h \
+  configurable.h \
+  singleton.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_repo.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_repo.o repo.cc
 
@@ -884,6 +1056,20 @@ similarity_mola_wrapper.o:mola_wrapper.cc \
   log.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_mola_wrapper.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_mola_wrapper.o mola_wrapper.cc
+
+similarity_configurable.o:configurable.cc \
+  configurable.h \
+  singleton.h \
+  concurrent.h \
+  concurrent.hpp \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_configurable.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_configurable.o configurable.cc
+
+similarity_cmdline.o:cmdline.cc \
+  cmdline.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_cmdline.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_cmdline.o cmdline.cc
 
 interface/dict.pb.cc \
   interface/dict.pb.h:interface/dict.proto
@@ -976,7 +1162,31 @@ interface/similarity_similarity.pb.o:interface/similarity.pb.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/similarity_similarity.pb.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o interface/similarity_similarity.pb.o interface/similarity.pb.cc
 
-simserver_sim_server.o:sim_server.cc \
+trainer_server_trainer_server_main.o:trainer_server_main.cc \
+  configurable.h \
+  singleton.h \
+  concurrent.h \
+  concurrent.hpp \
+  log.h \
+  trainer_server.h \
+  repo.h \
+  dictionary.h \
+  document.h \
+  token.h \
+  bow.h \
+  kvproxy_client.h \
+  corpus.h \
+  model.h \
+  test/test_lda.h \
+  test/test_main.h \
+  similarity.h \
+  mola_wrapper.h \
+  segment.h \
+  cmdline.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtrainer_server_trainer_server_main.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o trainer_server_trainer_server_main.o trainer_server_main.cc
+
+sim_server_sim_server.o:sim_server.cc \
   sim_server.h \
   singleton.h \
   concurrent.h \
@@ -993,30 +1203,32 @@ simserver_sim_server.o:sim_server.cc \
   similarity.h \
   mola_wrapper.h \
   kvproxy_client.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver_sim_server.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o simserver_sim_server.o sim_server.cc
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim_server_sim_server.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o sim_server_sim_server.o sim_server.cc
 
-simserver_sim_server_main.o:sim_server_main.cc \
-  sim_server.h \
+sim_server_sim_server_main.o:sim_server_main.cc \
+  configurable.h \
   singleton.h \
   concurrent.h \
   concurrent.hpp \
   log.h \
+  mola_wrapper.h \
+  segment.h \
+  token.h \
+  cmdline.h \
+  sim_server.h \
   dictionary.h \
   document.h \
-  token.h \
   bow.h \
   corpus.h \
   model.h \
   test/test_lda.h \
   test/test_main.h \
-  similarity.h \
-  mola_wrapper.h \
-  segment.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimserver_sim_server_main.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o simserver_sim_server_main.o sim_server_main.cc
+  similarity.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim_server_sim_server_main.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o sim_server_sim_server_main.o sim_server_main.cc
 
-server_server.o:server.cc \
+offline_trainer_offline_trainer.o:offline_trainer.cc \
   repo.h \
   concurrent.h \
   concurrent.hpp \
@@ -1032,9 +1244,11 @@ server_server.o:server.cc \
   model.h \
   test/test_lda.h \
   test/test_main.h \
-  similarity.h
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mserver_server.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o server_server.o server.cc
+  similarity.h \
+  configurable.h \
+  mola_wrapper.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40moffline_trainer_offline_trainer.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o offline_trainer_offline_trainer.o offline_trainer.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 

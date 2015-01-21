@@ -13,7 +13,7 @@ if len(sys.argv) == 2:
     if sys.argv[1] == "DEBUG":
         DEBUG = True
 
-CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -D__STDC_FORMAT_MACROS -DVERSION=\\\"1.0.0.0\\\"')
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -D__STDC_FORMAT_MACROS -DVERSION=\\\"1.0.0.0\\\" ')
 
 if DEBUG:
     CXXFLAGS('-g -O0 -pipe -W -Wall -fPIC -DDEBUG')
@@ -28,6 +28,7 @@ LDFLAGS('-lpthread -lcrypto -lrt -L.')
 
 CONFIGS('public/nshead@nshead_1-0-11-0_PD_BL')
 CONFIGS('public/odict@odict_1-1-7-0_PD_BL')
+CONFIGS('public/configure@configure_1-2-18-0_PD_BL')
 CONFIGS('public/ub@ub_1-2-64-1_PD_BL')
 CONFIGS('lib2-64/ullib@ullib_3-1-86-0_PD_BL')
 CONFIGS('lib2-64/wordseg@wordseg_3-2-1-1_PD_BL')
@@ -42,13 +43,14 @@ CONFIGS('third-64/protobuf@protobuf_2-4-1-1100_PD_BL')
 CONFIGS('third-64/zlib@zlib_1-2-3-400_PD_BL')
 CONFIGS('app/mobile/flyflow/server/lib/storage@storage_1-0-1-0_PD_BL')
 
-user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc kvproxy_client.cc mola_wrapper.cc'# trainer_server.cc'
+user_sources='dictionary.cc segment.cc token.cc document.cc encoding.cc corpus.cc tfidf.cc lda.cc lda_utils.cc cokus.cc similarity.cc bow.cc concurrent.cc repo.cc kvproxy_client.cc mola_wrapper.cc configurable.cc cmdline.cc'# trainer_server.cc'
 user_sources+= ' interface/dict.proto interface/corpus.proto interface/bow.proto interface/lda.proto interface/trainer.proto interface/similarity.proto'
-user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h'# trainer_server.h'
+user_headers='dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h configurable.h cmdline.h'# trainer_server.h'
 
 StaticLibrary('similarity',Sources(user_sources),HeaderFiles(user_headers))
-Application('simserver',Sources("sim_server.cc sim_server_main.cc"), Libraries('-lsimilarity'))
-Application('server',Sources("server.cc"), Libraries('-lsimilarity'))
+Application('trainer_server', Sources("trainer_server_main.cc"), Libraries('-lsimilarity'))
+Application('sim_server',Sources("sim_server.cc sim_server_main.cc"), Libraries('-lsimilarity'))
+Application('offline_trainer',Sources("offline_trainer.cc"), Libraries('-lsimilarity'))
 
 SubDirectory('test')
 

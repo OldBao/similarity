@@ -29,7 +29,7 @@ namespace sm {
 
   class Repository {
   public:
-    Repository(int nworkers =12, const std::string &local = "");
+    Repository();
     virtual ~Repository();
 
     int addUrl (const std::string& url);
@@ -43,16 +43,19 @@ namespace sm {
     int tfidf ();
     int lda();
 
-    int save(const std::string &basepath);
+    int save();
 
     Corpus& corpus(){ return _corpus; }
     Dictionary& dict(){ return _dict; }
     
-    const std::string getLocalCachePath(){ return _localpath; }
+    const std::string getLocalCachePath(){ return _cache_path; }
    private:
-    std::string _localpath;
+    std::string _model_path;
+    std::string _corpus_name, _dict_name;
+    std::string _cache_path;
     std::map<int, uint64_t> _docmap;
 
+    int _nworker;
     std::vector<RepositoryWorker *> _workers;
     Lock _docmapLock;
     Dictionary _dict;

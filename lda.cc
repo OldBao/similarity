@@ -5,7 +5,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/gzip_stream.h>
 #include "interface/lda.pb.h"
-
+#include "configurable.h"
 
 using namespace std;
 using namespace sm;
@@ -26,16 +26,6 @@ extern uint32_t randomMT();
 
 LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version, int nworkers) :
   TopicModel(corpus, dict),
-  _alpha(0.01), 
-  _init_alpha(1.0),
-  _estimate_alpha(1), //TODO 1 or 0
-  _var_max_iter(20),
-  _var_converged(1e-2),
-  _em_max_iter(100),
-  _em_converged(1e-2),
-  _max_alpha_iter(1000),
-  _newton_threshold(1e-2),
-  _ntopics(100),
   _ndocs(_corpus->size()),
   _nterms(corpus->getNTerms()),
   _version(version),
@@ -45,6 +35,24 @@ LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version, int nwor
   assert (corpus);
   assert (corpus->size() > 0);
 
+  SM_CONFIG_BEGIN(global)
+  SM_CONFIG_PROP_STR(model_path, "model");
+  SM_CONFIG_END
+
+  SM_CONFIG_BEGIN (lda)
+  SM_CONFIG_PROP_STR(model_name, "similarity");
+  SM_CONFIG_PROP(alpha, double, 0.01);
+  SM_CONFIG_PROP(init_alpha, double, 1.0);
+  SM_CONFIG_PROP(estimate_alpha, int32, 1);
+  SM_CONFIG_PROP(var_max_iter, int32, 20);
+  SM_CONFIG_PROP(var_converged, double, 1e-6);
+  SM_CONFIG_PROP(em_max_iter, int32, 100);
+  SM_CONFIG_PROP(em_converged, float, 1e-4);
+  SM_CONFIG_PROP(max_alpha_iter, int32, 1000);
+  SM_CONFIG_PROP(newton_threshold, double, 1e-4);
+  SM_CONFIG_PROP(ntopics, int32, 100);
+  SM_CONFIG_END
+  
   _e_workers.resize(std::min (nworkers, (int) corpus->size()));
   
   _init_prob();
@@ -243,12 +251,14 @@ int LDAModel::inference (const Corpus& __attribute__((unused)),
   return 0;
 }
 
-int LDAModel::save (const std::string &path, const std::string &basename) {
+int LDAModel::save () {
   char filename[PATH_MAX];
   if (_version != 0) {
-    snprintf (filename, PATH_MAX, "%s/%s.lda.%lu", path.c_str(), basename.c_str(), _version);
+    snprintf (filename, PATH_MAX, "%s/%s.lda.%lu",
+     _model_path.c_str(), _model_name.c_str(), _version);
   } else {
-    snprintf (filename, PATH_MAX, "%s/%s.lda", path.c_str(), basename.c_str());
+    snprintf (filename, PATH_MAX, "%s/%s.lda", 
+    _model_path.c_str(), _model_name.c_str());
   }
   
   ofstream os(filename);
@@ -290,13 +300,15 @@ int LDAModel::save (const std::string &path, const std::string &basename) {
 
 
 int 
-LDAModel::load (const std::string &path, const std::string &basename) {
+LDAModel::load() {
   char filename[PATH_MAX];
 
   if (_version != 0) {
-    snprintf (filename, PATH_MAX, "%s/%s.lda.%lu", path.c_str(), basename.c_str(), _version);
+    snprintf (filename, PATH_MAX, "%s/%s.lda.%lu", 
+    _model_path.c_str(), _model_name.c_str(), _version);
   } else {
-    snprintf (filename, PATH_MAX, "%s/%s.lda", path.c_str(), basename.c_str());
+    snprintf (filename, PATH_MAX, "%s/%s.lda", 
+    _model_path.c_str(), _model_name.c_str());
   }
 
   ifstream is(filename);

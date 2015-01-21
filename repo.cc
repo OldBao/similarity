@@ -7,6 +7,7 @@
 #include "log.h"
 #include "encoding.h"
 #include "model.h"
+#include "configurable.h"
 
 using namespace std;
 using namespace sm;
@@ -20,12 +21,20 @@ static uint64_t _sign_doc (const std::string &doc) {
 
 
 
-Repository::Repository(int nworkers, const std::string &local)
-  : _localpath(local)
+Repository::Repository()
 {
-  SM_ASSERT (nworkers < 12 * 1.5, "i suggest you to open at most [%lf] workers", 12*1.5);
+  SM_CONFIG_BEGIN(GLOBAL)
+  SM_CONFIG_PROP_STR(model_path, "model");
+  SM_CONFIG_END
 
-  for (int i = 0; i < nworkers; i++) {
+  SM_CONFIG_BEGIN(REPO)
+  SM_CONFIG_PROP_STR(cache_path, "doccache");
+  SM_CONFIG_PROP_STR(corpus_name, "similarity");
+  SM_CONFIG_PROP_STR(dict_name, "similarity");
+  SM_CONFIG_PROP(nworker, int32, 12);
+  SM_CONFIG_END
+
+  for (int i = 0; i < _nworker; i++) {
     RepositoryWorker *worker = new RepositoryWorker(this);
     _workers.push_back(worker);
     worker->start();
@@ -185,15 +194,15 @@ Repository::tfidf (){
 
 
 int
-Repository::save(const std::string &basepath) {
+Repository::save() {
   int ret;
-  ret = _dict.save (basepath, "similarity");
+  ret = _dict.save (_dict_name);
   if (0 != ret) {
     SM_LOG_WARNING("save dictionary error");
     return -1;
   }
   
-  ret = _corpus.save(basepath, "similarity");
+  ret = _corpus.save(_corpus_name);
   
   if (0 != ret) {
     SM_LOG_WARNING ("save corpus error");

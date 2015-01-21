@@ -6,6 +6,8 @@
 #include "similarity.h"
 #include "log.h"
 #include "interface/similarity.pb.h"
+#include "configurable.h"
+
 using namespace std;
 using namespace sm;
 
@@ -20,8 +22,18 @@ int SimCalculator::doJob (const int64_t &id) {
 TopicSimilarity::TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, 
                                  uint64_t version) : 
   _version (version), _model(model), 
-  _dict(dict), _corpus(corpus), _maxSim(50), _nworker(12)
+  _dict(dict), _corpus(corpus)
 {
+  SM_CONFIG_BEGIN(global)
+  SM_CONFIG_PROP_STR(model_path, "./model");
+  SM_CONFIG_END
+
+  SM_CONFIG_BEGIN (sim)
+  SM_CONFIG_PROP_STR(model_name, "similarity");
+  SM_CONFIG_PROP (maxSim, int32, 50);
+  SM_CONFIG_PROP (nworker, int32, 12);
+  SM_CONFIG_END
+
   _sims.resize (_corpus->size());
 
   for (int i = 0; i < _nworker ; i++) {
@@ -168,12 +180,14 @@ TopicSimilarity::getSimilarities (bow_t *ret, int id, double sim_threshold, int 
 
 
 int
-TopicSimilarity::save(const string &path, const string &basename) {
+TopicSimilarity::save() {
   char filename[PATH_MAX];
   if (_version != 0) {
-    snprintf (filename, PATH_MAX, "%s/%s.sim.%lu", path.c_str(), basename.c_str(), _version);
+    snprintf (filename, PATH_MAX, "%s/%s.sim.%lu", 
+              _model_path.c_str(), _model_name.c_str(), _version);
   } else {
-    snprintf (filename, PATH_MAX, "%s/%s.sim", path.c_str(), basename.c_str());
+    snprintf (filename, PATH_MAX, "%s/%s.sim", 
+              _model_path.c_str(), _model_name.c_str());
   }
 
   ofstream os(filename);
@@ -207,14 +221,17 @@ TopicSimilarity::save(const string &path, const string &basename) {
   return 0;
 }
 
+
 int
-TopicSimilarity::load(const string &path, const string &basename) {
+TopicSimilarity::load() {
   char filename[PATH_MAX];
 
   if (_version != 0) {
-    snprintf (filename, PATH_MAX, "%s/%s.sim.%lu", path.c_str(), basename.c_str(), _version);
+    snprintf (filename, PATH_MAX, "%s/%s.sim.%lu", 
+              _model_path.c_str(), _model_name.c_str(), _version);
   } else {
-    snprintf (filename, PATH_MAX, "%s/%s.sim", path.c_str(), basename.c_str());
+    snprintf (filename, PATH_MAX, "%s/%s.sim", 
+              _model_path.c_str(), _model_name.c_str());
   }
 
   ifstream is(filename);

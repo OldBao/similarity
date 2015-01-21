@@ -5,6 +5,7 @@
 #include "log.h"
 #include "corpus.h"
 #include "model.h"
+#include "configurable.h"
 
 #include "interface/corpus.pb.h"
 
@@ -14,8 +15,11 @@ using namespace sm;
 static int getMaxIdFromBow (const bow_t & bow);
 
 Corpus::Corpus(Dictionary *dict, uint64_t version) : 
-  _dict(dict), _nterms(0), _mdl(0), _version(version){
-
+  _dict(dict), _nterms(0), _mdl(0), _version(version)
+{
+    SM_CONFIG_BEGIN(global)
+    SM_CONFIG_PROP_STR(model_path, "./model");
+    SM_CONFIG_END
 }
 
 bool
@@ -114,14 +118,16 @@ Corpus::truncate (int num_features) {
 
 
 int
-Corpus::save(const std::string& path, const std::string &basename){
+Corpus::save(const string &name){
   smpb::Corpus serial_corpus;
   char fullpath[PATH_MAX];
 
   if (_version) {
-    snprintf (fullpath, PATH_MAX, "%s/%s.corpus.%lu", path.c_str(), basename.c_str(), _version);
+    snprintf (fullpath, PATH_MAX, "%s/%s.corpus.%lu", 
+    _model_path.c_str(), name.c_str(), _version);
   } else {
-    snprintf (fullpath, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
+    snprintf (fullpath, PATH_MAX, "%s/%s.corpus", 
+    _model_path.c_str(), name.c_str());
   }
 
 
@@ -168,10 +174,17 @@ Corpus::save(const std::string& path, const std::string &basename){
 
 
 int
-Corpus::load(const std::string &path, const std::string &basename){
+Corpus::load(const string& name) {
   char fullpath[PATH_MAX];
   
-  snprintf (fullpath, PATH_MAX, "%s/%s.corpus", path.c_str(), basename.c_str());
+  if (_version == 0) {
+    snprintf (fullpath, PATH_MAX, "%s/%s.corpus", 
+    _model_path.c_str(), name.c_str());
+  } else {
+    snprintf (fullpath, PATH_MAX, "%s/%s.corpus.%" PRIu64,
+     _model_path.c_str(), name.c_str(), _version);
+  }
+
   ifstream is(fullpath);
   if (!is.is_open()) {
     SM_LOG_WARNING ("load file [%s] for reading error", fullpath);

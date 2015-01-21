@@ -9,7 +9,6 @@ using namespace sm;
 Model::Model(Corpus *corpus, Dictionary *dict) :
   _dict(dict), _corpus(corpus)
 {
-  
 }
 
 Model::~Model() {}

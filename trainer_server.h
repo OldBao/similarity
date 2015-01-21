@@ -10,22 +10,12 @@
 #include "log.h"
 #include "repo.h"
 #include "model.h"
-
+#include "similarity.h"
 
 namespace sm {
   class TrainServer;
 
   class TrainData : public Thread<bool> {
-  private:
-    uint64_t _version;
-    Repository *_repo;
-    TopicModel *_model;
-<<<<<<< HEAD
-    TrainServer *_server;
-=======
-    TopicSimilarity *_sim;
->>>>>>> 054a847b50093c245892394c15f125b7fc9f796e
-
   public:
     TrainData(uint64_t version, TrainServer *server);
     ~TrainData();
@@ -34,6 +24,14 @@ namespace sm {
     int addUrlFromIStream(istream &is);
     int train();
     int uploadToHdfs();
+
+  private:
+    uint64_t _version;
+    Repository *_repo;
+    TopicModel *_model;
+
+    TrainServer *_server;
+    TopicSimilarity *_sim;
   };
 
   class TrainServerEvent : public ub::NsheadSvrEvent {
@@ -44,14 +42,15 @@ namespace sm {
 
   class TrainServer : public ub::UbAServer {
   public:
-    TrainServer();
+    TrainServer(ub::NetReactor *reactor);
+    int  loadNewestData();
     void on_accept (ub::UbEvent *event);
     void onTrainJobDone(uint64_t version, int status);
-    const std::string getModelPath() {return _path;}
+    const std::string getModelPath() {return _model_path;}
     uint64_t getCurrentVersion() {return _current_version; }
     uint64_t addNewTrainingJob (std::vector<std::string> files);
   private:
-    string _path;
+    string _model_path;
     std::map <uint64_t, TrainData *> _datas;
     uint64_t _current_version;
     RWLock _dataLock;

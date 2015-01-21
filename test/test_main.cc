@@ -17,7 +17,7 @@ main(int argc, char **argv) {
     return -1;
   }
 
-  if ( 0 != Segment::getInstance()->load (argv[1], argv[2])){
+  if ( 0 != Segment::getInstance()->load ()){
     cout << "init segment unit error!" << endl;
     return -1;
   }

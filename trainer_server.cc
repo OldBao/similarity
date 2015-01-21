@@ -136,6 +136,15 @@ TrainServer::addNewTrainingJob (vector<string> files) {
   return 0;
 }
 
+TrainServer::TraineServer(ub::NetReactor *reactor) :
+  ub::UbAServer (reactor)
+{
+  SM_BEGIN_CONFIG (global)
+  SM_CONFG_PROP_STR(model_path, model_path, "model")
+  SM_END_CONFIG
+}
+
+
 void
 TrainServer::onTrainJobDone(uint64_t version, int status) {
   if (status == 0) {
@@ -163,4 +172,10 @@ void
 TrainServer::on_accept(ub::UbEvent *event) {
   TrainServerEventPtr mev;
   session_begin(&mev);
+}
+
+
+int
+loadNewestData(){
+  
 }

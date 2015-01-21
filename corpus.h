@@ -9,8 +9,8 @@ namespace sm {
     Corpus(Dictionary * _dict = NULL, uint64_t version = 0);
     virtual ~Corpus();
     
-    int save(const std::string &base, const std::string& basename);
-    int load(const std::string &path, const std::string& basename);
+    int save(const std::string &name);
+    int load(const std::string &name);
     
     int truncate(int num_features = 12);
     int addDoc(uint64_t docid, const bow_t& bow);
@@ -25,6 +25,7 @@ namespace sm {
     int getIdFromDocid (uint64_t docid);
     uint64_t getDocid(size_t id) const;
   protected:
+    std::string _model_path;
     std::vector <bow_t> _docs;
 
     std::vector <uint64_t> _docids;

@@ -2,7 +2,7 @@
 #include "log.h"
 #include "segment.h"
 #include "encoding.h"
-
+#include "configurable.h"
 using namespace sm;
 using namespace std;
 
@@ -13,22 +13,28 @@ SM_IMP_SINGLETON(Segment);
 
 
 int
-Segment::load (const std::string &path, const std::string& postag_path, const std::string& stopword_file){
-  if (NULL == (_scw_dict = scw_load_worddict(path.c_str())) ){
+Segment::load (){
+  SM_CONFIG_BEGIN(segment)
+  SM_CONFIG_PROP_STR(worddict, "worddict");
+  SM_CONFIG_PROP_STR(postag, "postag");
+  SM_CONFIG_PROP_STR(stopwords, "stopwords");
+  SM_CONFIG_END
+    
+  if (NULL == (_scw_dict = scw_load_worddict(_worddict.c_str())) ){
     SM_LOG_FATAL ("loading segment dict error");
     return -1;
   }
 
-  if (0 != tag_open (postag_path.c_str())) {
+  if (0 != tag_open (_postag.c_str())) {
     SM_LOG_FATAL ("open tag error");
     return -1;
   }
 
   FILE *fp = NULL;
-  if (!stopword_file.empty()) {
-    fp = fopen(stopword_file.c_str(), "r");
+  if (!_stopwords.empty()) {
+    fp = fopen(_stopwords.c_str(), "r");
     if (!fp) {
-      SM_LOG_FATAL ("open stop words file %s fail", stopword_file.c_str());
+      SM_LOG_FATAL ("open stop words file %s fail", _stopwords.c_str());
       return -1;
     }
 

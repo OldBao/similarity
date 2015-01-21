@@ -26,8 +26,8 @@ namespace sm {
       return _words.size();
     }
 
-    int save(const std::string &path, const std::string& name, const std::string &encoding="UTF8");
-    int load(const std::string &path, const std::string& name);
+    int save(const std::string &name);
+    int load(const std::string &name);
 
     int getNnz () { return _nnz; }
     std::vector<int>& getDfs() {return _dfs;}
@@ -44,6 +44,7 @@ namespace sm {
     std::map <std::wstring, int> _wordmap;
     std::vector<int> _dfs;
     uint64_t _mask;
+    std::string _model_path, _encoding;
 
     RWLock _wordmapLock;
     Lock _nnzLock;
