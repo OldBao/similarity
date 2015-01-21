@@ -26,10 +26,6 @@ namespace sm {
     _internal_Job<T> _job ;
     _job.job = job;
     _job.priority = prior;
-    _emptyLock.Acquire();
-    _done = false;
-    _wait_done = false;
-    _emptyLock.Release();
 
     _jobLock.Acquire();
     _jobQueue.push (_job);
@@ -87,10 +83,9 @@ namespace sm {
   Thread<T>::waitAllJobDone(){
     _emptyLock.Acquire();
     _wait_done = true;
-    while (!_done) _emptyCond.Wait(_emptyLock, 3000);
-    _wait_done = false;
-    _done = false;
+    _emptyCond.Wait(_emptyLock);
     _emptyLock.Release();
+
   }
 
 
@@ -100,7 +95,6 @@ namespace sm {
   Thread<T>::thread_member(){
     int done = 0, fail = 0, unexpected = 0;
 
-    SM_LOG_DEBUG ("thread started");
     while (1) {
       //check father tell me to stopped
       _cmdLock.Acquire();
@@ -122,13 +116,12 @@ namespace sm {
         has_newjob = true;
         _jobLock.Release();
       } else {
+        _emptyLock.Acquire();
         if (_wait_done) {
-          _emptyLock.Acquire();
-          _done = true;
+          _wait_done = false;
           _emptyCond.Signal();
-          _emptyLock.Release();
         }
-
+        _emptyLock.Release();
         _jobCond.Wait(_jobLock, 3000);
         _jobLock.Release();
       }

@@ -69,8 +69,8 @@ namespace sm {
     void on_accept (ub::UbEvent *event);
 
     //TODO change this to config
-    float getDefaultMaxResult() {return 20; }
-    int getDefaultThreshold() {return 0.0; }
+    int getDefaultMaxResult() {return 20; }
+    float getDefaultThreshold() {return 0.0; }
   private:
     SimServerData *_server_data;
     RWLock _dataLock;

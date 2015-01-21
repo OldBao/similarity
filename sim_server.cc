@@ -197,7 +197,11 @@ SimServerDataManager::registerSimServer(SimServer *server) {
 
 
 SimServerData::SimServerData(uint64_t version):
+<<<<<<< HEAD
   _version (version), _corpus(NULL), _dict(NULL), _model(NULL), _sim(NULL)
+=======
+  _version (version), _corpus(NULL), _dict(NULL) ,_model(NULL), _sim(NULL)
+>>>>>>> 054a847b50093c245892394c15f125b7fc9f796e
 {
 
 }
@@ -318,16 +322,22 @@ SimServerData::load(const string &path) {
     return -1;
   }
 
-  _sim = new TopicSimilarity (_model, _corpus, _dict, 30);
+  _sim = new TopicSimilarity (_model, _corpus, _dict);
 
-  SM_LOG_NOTICE ("new version %" PRIu64 " Begin training", _version);
-  for (int i = 0; i <= _model->getNTopics(); i++) {
+  //SM_LOG_NOTICE ("new version %" PRIu64 " Begin training", _version);
+  /*
+  for (int i = 0; i < _model->getNTopics(); i++) {
     _sim->calculate (i);
   }
 
   _sim->waitAllJobDone();
-
-  SM_LOG_NOTICE ("new version %" PRIu64 "  training down", _version);
+  */
+  if (0 != _sim->load (path, "similarity")) {
+    SM_LOG_WARNING ("load sim model error");
+    return -1;
+  }
+  
+  SM_LOG_NOTICE ("new sim version %" PRIu64 "  loaded", _version);
 
 
 #include <iostream>

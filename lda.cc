@@ -45,12 +45,8 @@ LDAModel::LDAModel (Corpus *corpus, Dictionary *dict, uint64_t version, int nwor
   assert (corpus);
   assert (corpus->size() > 0);
 
-  for (int i = 0; i < nworkers; i++) {
-    LDAEWorker *worker = new LDAEWorker(this);
-    _e_workers.push_back (worker);
-    worker->start();
-  }
-
+  _e_workers.resize(std::min (nworkers, (int) corpus->size()));
+  
   _init_prob();
 }
 
@@ -71,27 +67,14 @@ LDAModel::_init_prob(){
   for (int i = 0; i < _ndocs; i++)
     _var_gamma[i] = (double *) malloc(sizeof(double) * _ntopics);
 
-  /*
-  int max_length = _corpus->maxDocLen();
-  _phi = (double **) malloc( sizeof(double*) * max_length);
-  for (int i = 0; i < max_length; i++)
-    _phi[i] = (double *) malloc(sizeof(double) * _ntopics);
-  */
 }
 
 
 LDAModel::~LDAModel(){
-
   if (_var_gamma) {
     for (int i = 0; i < _ndocs; i++) free (_var_gamma[i]);
     free (_var_gamma);
   }
-
-  /*
-  if (_phi) {
-    for (size_t i = 0; i < _corpus->maxDocLen(); i++) free (_phi[i]);
-    free (_phi);
-    }*/
 
   if (_log_prob_w){ 
     for (int i = 0; i < _ntopics; i++) {
@@ -110,19 +93,19 @@ int
 LDAModel::_cluster(){
   _topics.resize(_ntopics);
 
-  SM_LOG_DEBUG ("begin cluster docs %zu", _topics.size());
-
   for (int i = 0; i < _ndocs; i++) {
     bow_t ret;
     getMostLikelyTopicOfDoc (&ret, i, 0, 1);
     if (ret.size() != 0) {
-      SM_LOG_DEBUG ("doc [%d] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
+      //SM_LOG_DEBUG ("doc [%d] belongs to topic [%d:%lf]", i, ret[0].id, ret[0].weight);
       assert (ret[0].id >= 0 && ret[0].id < _ntopics);
       _topics[ret[0].id].push_back (i);
     } else {
       SM_LOG_WARNING ("wtf");
     }
   }
+
+  SM_LOG_DEBUG ("cluster docs %zu done", _topics.size());
 
   return 0;
 }
@@ -135,7 +118,7 @@ LDAModel::_merge_ss(LDAState *ss) {
     LDAEWorker* worker = _e_workers[i];
     likelihood += worker->likelihood;
     ss->alpha_suffstats += worker->ss->alpha_suffstats;
-    ss->ndocs = worker->ss->ndocs;
+    ss->ndocs += worker->ss->ndocs;
     for (int j = 0; j < _ntopics; j++) {
       ss->class_total[j] += worker->ss->class_total[j];
       for (int n = 0; n < _nterms; n++) {
@@ -151,6 +134,12 @@ LDAModel::_merge_ss(LDAState *ss) {
 
 int 
 LDAModel::train(){
+  for (size_t i = 0; i < _e_workers.size(); i++) {
+    LDAEWorker *worker = new LDAEWorker(this);
+    _e_workers[i] = worker;
+    worker->start();
+  }
+
   // initialize model
   LDAState *ss = new LDAState(*_corpus, _ntopics);
   _mle(ss, 0);
@@ -159,6 +148,7 @@ LDAModel::train(){
   _em (ss);
   
   delete ss;
+  _cluster();
   return 0;
 }
 
@@ -188,7 +178,7 @@ LDAModel::_em(LDAState *ss){
     int range = _corpus->size() / _e_workers.size() + 1;
     int t = 0;
     while (t < (int) _e_workers.size()-1 &&
-           ((t+1)*range-1) < _corpus->size() ) 
+           ((t+1)*range-1) < (int)_corpus->size() ) 
       {
         pair<int,int> job(t*range, (t+1)*range-1);
         _e_workers[t]->addJob(job);
@@ -378,9 +368,9 @@ LDAModel::getMostLikelyTopicOfDoc (bow_t *ret, int docid, double threshold, int 
 
 int
 LDAModel::getDocsOfTopic (vector<int> *tmp, int topicid) {
-  assert (topicid <= _ntopics);
+  assert (topicid < _ntopics && topicid >= 0);
 
-  *tmp =  _topics[topicid-1];
+  *tmp =  _topics[topicid];
   return 0;
 
 }
@@ -649,8 +639,6 @@ LDAState::LDAState(const Corpus &corpus, int topics):
       class_word[k][n] += 1.0/_nterms + myrand();
       class_total[k] += class_word[k][n];
     }
-
-  SM_LOG_DEBUG ("init with state topics %d", _ntopics);
 }
 
 LDAState::~LDAState(){
@@ -702,15 +690,19 @@ int
 LDAEWorker::doJob(const pair<int, int>& range){
   SM_ASSERT (range.first <= range.second, "range should be [l, g]");
 
-
+  /*
+  SM_LOG_NOTICE ("Trainning [%d-%d]",
+                 range.first, range.second);
+  */
   for (int i = range.first; i <= range.second; i++) {
     likelihood += model->_e_step(model->_corpus->at(i),
                                  model->_var_gamma[i],
                                  phi,
                                  ss);
   }
-
-  SM_LOG_NOTICE ("Training [%d-%d] total likelihood %lf", 
+  /*
+  SM_LOG_NOTICE ("[%d-%d] likelihood %lf", 
                  range.first, range.second, likelihood);
+  */
   return 0;
 }

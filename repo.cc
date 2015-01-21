@@ -29,7 +29,6 @@ Repository::Repository(int nworkers, const std::string &local)
     RepositoryWorker *worker = new RepositoryWorker(this);
     _workers.push_back(worker);
     worker->start();
-
   }
 }
 

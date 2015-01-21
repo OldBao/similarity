@@ -1,11 +1,13 @@
+#include <fstream>
 #include <vector>
 #include <algorithm>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/gzip_stream.h>
 #include "similarity.h"
 #include "log.h"
+#include "interface/similarity.pb.h"
 using namespace std;
 using namespace sm;
-
-#define THREAD_COUNT 5
 
 SimCalculator::SimCalculator(TopicSimilarity *sim) : _sim(sim){}
 SimCalculator::~SimCalculator() {}
@@ -15,12 +17,14 @@ int SimCalculator::doJob (const int64_t &id) {
   return 0;
 }
 
-TopicSimilarity::TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, int maxSim) : 
-  _model(model), _dict(dict), _corpus(corpus), _maxSim(maxSim)
+TopicSimilarity::TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, 
+                                 uint64_t version) : 
+  _version (version), _model(model), 
+  _dict(dict), _corpus(corpus), _maxSim(50), _nworker(12)
 {
   _sims.resize (_corpus->size());
 
-  for (int i = 0; i < THREAD_COUNT; i++) {
+  for (int i = 0; i < _nworker ; i++) {
     SimCalculator *cal = new SimCalculator(this);
     cal->start();
     _calculators.push_back(cal);
@@ -105,7 +109,7 @@ int
 TopicSimilarity::calculate(int64_t topicid){
   _sims.resize (_corpus->size());
   
-  this->_calculators[topicid%THREAD_COUNT]->addJob (topicid);
+  this->_calculators[topicid%_calculators.size()]->addJob (topicid);
   return 0;
 }
 
@@ -121,7 +125,7 @@ TopicSimilarity::getSimilarities(bow_t *ret, const bow_t& bow, const vector<int>
        iter != dest.end();
        iter++)
     {
-      SM_ASSERT (*iter < _corpus->size() && *iter >0, 
+      SM_ASSERT (*iter < (int)_corpus->size() && *iter >0, 
                  "id [%d] not with corpus", *iter);
       bow_unit_t u;
       float distance = bow.cossim(_corpus->at(*iter));
@@ -144,20 +148,114 @@ int
 TopicSimilarity::getSimilarities (bow_t *ret, int id, double sim_threshold, int max_result)
 {
   if (max_result <= 0) return 0;
-  SM_CHECK_RET_ERR (id < _sims.size(), "sim size is too small");
+  SM_CHECK_RET_ERR (id < (int)_sims.size(), "sim size is too small");
   SM_CHECK_RET_ERR (ret->size() == 0, "return container should be empty");
 
   const bow_t &src = _sims[id];
   _sims[id].sort();
 
-  for (int i = 0; i < src.size(); i++) {
+  for (size_t i = 0; i < src.size(); i++) {
     const bow_unit_t u = src[i];
     if (u.weight < sim_threshold) continue;
     else {
       ret->push_back (u);
-      if (ret->size() >= max_result) break;
+      if ((int)ret->size() >= max_result) break;
     }
   }
+
+  return 0;
+}
+
+
+int
+TopicSimilarity::save(const string &path, const string &basename) {
+  char filename[PATH_MAX];
+  if (_version != 0) {
+    snprintf (filename, PATH_MAX, "%s/%s.sim.%lu", path.c_str(), basename.c_str(), _version);
+  } else {
+    snprintf (filename, PATH_MAX, "%s/%s.sim", path.c_str(), basename.c_str());
+  }
+
+  ofstream os(filename);
+  if (!os.is_open()){
+    SM_LOG_WARNING ("open %s error store lda", filename);
+    return -1;
+  }
+
+  google::protobuf::io::OstreamOutputStream oos(&os);
+  google::protobuf::io::CodedOutputStream cos(&oos);
+  smpb::Similarity ssim;
+
+  ssim.set_version(_version);
+
+  SM_ASSERT (_sims.size() == _corpus->size(), "similarity of doc must be equal");
+  for (size_t i = 0; i < _sims.size(); i++) {
+    smpb::Sim* simOfDoc = ssim.add_sims ();
+    for (size_t j = 0; j < _sims[i].size(); j++) {
+      smpb::SimUnit *unit = simOfDoc->add_units();
+      unit->set_id(_sims[i][j].id);
+      unit->set_sim(_sims[i][j].weight);
+    }
+  }
+
+  if (!ssim.SerializeToCodedStream(&cos)){
+    SM_LOG_WARNING ("serialize to %s error", filename);
+    return -1;
+  }
+
+  SM_LOG_NOTICE ("save sim model %s success", filename);
+  return 0;
+}
+
+int
+TopicSimilarity::load(const string &path, const string &basename) {
+  char filename[PATH_MAX];
+
+  if (_version != 0) {
+    snprintf (filename, PATH_MAX, "%s/%s.sim.%lu", path.c_str(), basename.c_str(), _version);
+  } else {
+    snprintf (filename, PATH_MAX, "%s/%s.sim", path.c_str(), basename.c_str());
+  }
+
+  ifstream is(filename);
+  if (!is.is_open()) {
+    SM_LOG_WARNING ("open sim file %s error", filename);
+    return -1;
+  }
+
+  google::protobuf::io::IstreamInputStream iis(&is);
+  google::protobuf::io::CodedInputStream cis(&iis);
+  cis.SetTotalBytesLimit(1024*1024*1024, 1024*1024*1024); //TODO change to soft code
+
+  smpb::Similarity dsim;
+  if (!dsim.ParseFromCodedStream(&cis)) {
+    SM_LOG_WARNING ("parse sim model [%s] error", filename);
+    return -1;
+  }
+
+  if (_version != dsim.version()) {
+    SM_LOG_WARNING ("expect sim model version is %lu, file is %lu", 
+                    _version, dsim.version());
+    return -1;
+  }
+
+  SM_CHECK_RET_ERR (dsim.sims_size() == (int)_corpus->size(), 
+                    "sim size [%d] not equals to corpus size [%zu]",
+                    dsim.sims_size(), _corpus->size());
+
+  _sims.resize(dsim.sims_size());
+  for (int i = 0; i < dsim.sims_size(); i++) {
+    const smpb::Sim &dsimOfDoc = dsim.sims(i);
+    for (int j = 0; j < dsimOfDoc.units_size(); j++) {
+      bow_unit_t u;
+      u.id = dsimOfDoc.units(j).id();
+      u.weight = dsimOfDoc.units(j).sim();
+
+      _sims[i].push_back (u);
+    }
+  }
+
+  SM_LOG_NOTICE ("load sim model [%s] success", filename);
 
   return 0;
 }

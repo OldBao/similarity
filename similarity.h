@@ -23,7 +23,7 @@ namespace sm {
 
   class Similarity {
   public:
-    Similarity(Model *model, Corpus *corpus, Dictionary *dict, int maxSim = 200) {}
+    Similarity(Model *model, Corpus *corpus, Dictionary *dict){}
     virtual ~Similarity() {}
 
     virtual int calculate(int64_t topicid) = 0;
@@ -50,7 +50,7 @@ namespace sm {
 
   class TopicSimilarity : public Similarity {
   public:
-    TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, int maxSim = 200);
+    TopicSimilarity(TopicModel *model, Corpus *corpus, Dictionary *dict, uint64_t version = 0);
     ~TopicSimilarity();
 
     virtual int calculate (int64_t topicid);
@@ -58,23 +58,29 @@ namespace sm {
     virtual int getSimilarities ( bow_t * ret,
                                   int id, 
                                   double sim_threshold = 0.75, 
-                                  int max_result=50 );
+                                  int max_result=30 );
 
     virtual int getSimilarities ( bow_t *ret, 
                                   const bow_t& bow,
                                   const std::vector<int>& comp_dest, 
                                   double sim_threshold = 0.1,
-                                  int max_result=20);
+                                  int max_result=30);
 
     virtual int doJob(int64_t topicid);
     // inference
    
-     virtual void waitAllJobDone();
+    virtual void waitAllJobDone();
+    
+    int save(const std::string &path, const std::string &file);
+    int load(const std::string &path, const std::string &file);
+
   private:
+    uint64_t _version;
     TopicModel *_model;
     Dictionary *_dict;
     Corpus *_corpus;
     int _maxSim;
+    int _nworker;
     
     std::vector< bow_t > _sims;
     

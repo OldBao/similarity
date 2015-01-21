@@ -4,6 +4,7 @@
 #include "repo.h"
 #include "segment.h"
 #include "model.h"
+#include "similarity.h"
 
 using namespace std;
 using namespace sm;
@@ -53,5 +54,15 @@ main(int argc, char **argv){
   LDAModel ldaModel (&repo.corpus(), &repo.dict());
   ldaModel.train();
   ldaModel.save(argv[2], "similarity");
+
+  TopicSimilarity sim (&ldaModel, &repo.corpus(), &repo.dict());
+  
+  for (int i = 0; i < ldaModel.getNTopics(); i++) {
+    sim.calculate(i);
+  }
+  sim.waitAllJobDone();
+
+  sim.save(argv[2], "similarity");
+  
   return 0;
 }

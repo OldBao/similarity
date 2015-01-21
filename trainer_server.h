@@ -20,7 +20,11 @@ namespace sm {
     uint64_t _version;
     Repository *_repo;
     TopicModel *_model;
+<<<<<<< HEAD
     TrainServer *_server;
+=======
+    TopicSimilarity *_sim;
+>>>>>>> 054a847b50093c245892394c15f125b7fc9f796e
 
   public:
     TrainData(uint64_t version, TrainServer *server);
