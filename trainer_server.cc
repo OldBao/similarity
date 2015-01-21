@@ -1,12 +1,14 @@
+#include <inttypes.h>
 #include "trainer_server.h"
+#include "interface/trainer.pb.h"
 
 using namespace std;
 using namespace sm;
 
-TrainData::TrainData (uint64_t version, TrainerServer *server) :
+TrainData::TrainData (uint64_t version, TrainServer *server) :
   _version(version), _repo(NULL), _model (NULL), _server(server)
 {
-  repo = new Repository ();
+  _repo = new Repository ();
 
 }
 
@@ -15,19 +17,19 @@ TrainData::~TrainData() {
     delete _model;
     _model = NULL;
   }
+  if (_repo) {
+    delete _repo;
+    _repo = NULL;
+  }
 }
 
 int
-addUrlFromIStream(istream &is){
+TrainData::addUrlFromIStream(istream &is){
   string url;
-  if (!is.is_open()) {
-    SM_LOG_WARNING ("invalid istream!");
-    return -1;
-  }
 
   while (!is.eof()) {
     is >> url;
-    if (url.empty()) continue
+    if (url.empty()) continue;
     SM_LOG_NOTICE ("add %s to repo", url.c_str());
     _repo->addUrl(url);
   }
@@ -35,40 +37,34 @@ addUrlFromIStream(istream &is){
 }
 
 int
-doJob(int) {
+TrainData::doJob(const bool &) {
   int ret = train();
   if (ret != 0) {
-    onTrainJobDone(_version, ret);
+    _server->onTrainJobDone(_version, ret);
   }
   else {
     ret = uploadToHdfs();
-    onTrainJobDone(_version, ret);
+    _server->onTrainJobDone(_version, ret);
   }
   return 0;
 }
 
 int
-train(){
+TrainData::train(){
   SM_ASSERT (!_model, "needn't train twice, is wasteful");
 
-  _model = new LDAModel (_repo->corpus(), _repo->dict(), _version);
+  _model = new LDAModel (&_repo->corpus(), &_repo->dict(), _version);
   SM_LOG_NOTICE ("begin train lda, version %" PRIu64 ", topics : %d, terms:%d", 
-                 _model->getNTopics(), _repo->corpus().getNTerms());
+                 _version ,_model->getNTopics(), _repo->corpus().getNTerms());
 
-  if (0 != ldaModel.train()) {
+  if (0 != _model->train()) {
     SM_LOG_WARNING ("train lda error");
     return -1;
   }
 
-  return ldaModel.save (_model_path, "similarity");
+  return _model->save (_server->getModelPath(), "similarity");
 }
 
-
-int
-TrainData::~TrainData(){
-  if (_model)
-    delete _model;
-}
 
 
 void
@@ -76,28 +72,30 @@ TrainServerEvent::read_done_callback(){
   nshead_t *req_head = (nshead_t *) this->get_read_buffer();
   char *reqbuf = (char *)req_head+1;
   
-  smpb::TrainReuqest req;
+  smpb::TrainRequest req;
   smpb::TrainResponse res;
   TrainServer *server = (TrainServer *) _fserver;
 
-  if (!request.parseFromString(reqbuf, req_head->body_len)){
-    res.ret = INVALID;
+  string raw;
+  raw.assign (reqbuf, req_head->body_len);
+  if (!req.ParseFromString(raw)){
+    res.set_ret(smpb::TrainResponse::INVALID);
   } else {
-    if (request.cmd == CHECK_VERSION) {
-      res.ret = OK;
-      res.version = server->getCurrentVersion();
-    } else if (request.cmd == UPDATE) {
-      if (request.files_size() == 0) {
-        res.ret = INVALID;
+    if (req.cmd() == smpb::TrainRequest::CHECK_VERSION) {
+      res.set_ret(smpb::TrainResponse::OK);
+      res.set_version(server->getCurrentVersion());
+    } else if (req.cmd() == smpb::TrainRequest::UPDATE) {
+      if (req.files_size() == 0) {
+        res.set_ret(smpb::TrainResponse::INVALID);
       } else {
         vector<string> urlfiles;
-        for (int i = 0; i < request.files_size(); i++) urlfiles.push_back(request.files(i));
+        for (int i = 0; i < req.files_size(); i++) urlfiles.push_back(req.files(i));
         uint64_t newid = server->addNewTrainingJob(urlfiles);
-        if (newid != (uint64) -1) {
-          res.ret = INTERNAL;
+        if (newid != (uint64_t) -1) {
+          res.set_ret(smpb::TrainResponse::INTERNAL);
         } else {
-          res.ret = OK;
-          res.newid = newid;
+          res.set_ret(smpb::TrainResponse::OK);
+          res.set_version(newid);
         }
       }
     }
@@ -110,7 +108,7 @@ TrainServer::addNewTrainingJob (vector<string> files) {
   uint64_t new_version;
   _dataLock.AcquireRead();
   if (_datas.empty()) new_version = 0;
-  else new_version = _datas.rbegin()->first();
+  else new_version = _datas.rbegin()->first;
   _dataLock.Release();
   
   TrainData *data = new TrainData(new_version, this);
@@ -123,29 +121,29 @@ TrainServer::addNewTrainingJob (vector<string> files) {
        iter != files.end();
        iter++)
     {
-      ifstream is(*iter, ios::in);
+      ifstream is(iter->c_str());
       if (!is.is_open()) {
         SM_LOG_WARNING ("open %s file fails", iter->c_str());
         return -1;
       } else {
-        if ( 0 != data->addUrlFromStream(is)){
-          return -1
+        if ( 0 != data->addUrlFromIStream(is)){
+          return -1;
         }
       }
     }
 
-  data->addJob();
+  data->addJob(true);
   return 0;
 }
 
 void
-TrainServer::onTrainJobDone(unint64_t version, int status) {
+TrainServer::onTrainJobDone(uint64_t version, int status) {
   if (status == 0) {
     SM_LOG_NOTICE ("new version %" PRIu64 "done, trasfering [%"PRIu64"=>%"PRIu64"]",
                    _current_version,version);
     _dataLock.AcquireWrite();
     TrainData *data = _datas[_current_version];
-    _datas.remove(_current_verion);
+    _datas.erase(_current_version);
     delete data;
 
     if (version > _current_version) {
@@ -155,14 +153,14 @@ TrainServer::onTrainJobDone(unint64_t version, int status) {
   } else {
     _dataLock.AcquireWrite();
     TrainData *data = _datas[version];
-    _datas.remove(_current_version);
+    _datas.erase(_current_version);
     _dataLock.Release();
   }
 }
 
 
 void
-on_accpet(ub::UbEvent __attribute__((unused))) {
-  MyNsheadEventPtr mev;
+TrainServer::on_accept(ub::UbEvent *event) {
+  TrainServerEventPtr mev;
   session_begin(&mev);
 }

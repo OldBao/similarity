@@ -47,7 +47,8 @@ main(int argc, char **argv) {
     SM_LOG_FATAL ("load reactor failed");
     return -1;
   }
-  reactor->run();
+
+  if (!reactor->run());
 
   SimServer *simserver = new SimServer (reactor);
   if (simserver->load (conf["server"]["sim"]) != 0) {
