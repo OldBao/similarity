@@ -2,6 +2,7 @@
 #define TRAINER_SERVER_H_
 #include <string>
 #include <fstream>
+#include <istream>
 
 #include "NsheadSvrEvent.h"
 #include "UbAServer.h"
@@ -50,7 +51,7 @@ namespace sm {
     uint64_t getCurrentVersion() {return _current_version; }
     uint64_t addNewTrainingJob (std::vector<std::string> files);
   private:
-    string _model_path;
+    std::string _model_path;
     std::map <uint64_t, TrainData *> _datas;
     uint64_t _current_version;
     RWLock _dataLock;
