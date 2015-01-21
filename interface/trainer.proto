@@ -1,13 +1,13 @@
 package smpb;
 
-message TrainerResponse{
+message TrainResponse{
     enum RES_TYPE {OK = 0; INVALID = 1; INTERNAL = 2;};
     required RES_TYPE ret = 1;
 
     optional uint64 version = 2;
 };
 
-message TrainerRequest {
+message TrainRequest {
     enum CMD_TYPE {CHECK_VERSION = 1; UPDATE = 2;};
     
     required CMD_TYPE cmd = 1;

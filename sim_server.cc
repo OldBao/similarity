@@ -36,16 +36,23 @@ SimServer::~SimServer(){
 
 int
 SimServer::updateServerData(SimServerData *data) {
+  int ret;
   _dataLock.AcquireWrite();
-  if (_server_data == NULL) this->getready();
-  _server_data = data;
+  if (_server_data == NULL)  {
+    if ( 0 != this->getready() ){
+      SM_LOG_FATAL("server start error");
+      ret = -1;
+    } else {
+      _server_data = data;
+      SM_LOG_NOTICE ("data has upgraded to version : %" PRIu64, data->getVersion());
+    }
+  }
   _dataLock.Release();
 
-  SM_LOG_NOTICE ("data has upgraded to version : %" PRIu64, data->getVersion());
-  return 0;
+  return ret;
 }
 
-int 
+int
 SimServer::getSimilarities (sim_t *sims, uint64_t docid, float threshold, int max_result) {
   int ret;
   _dataLock.AcquireRead();
@@ -155,45 +162,46 @@ int
 SimServerDataManager::checkVersion(){
   uint64_t remote_version = 0; // TODO get version from remote
 
-  /*
-  SM_LOG_NOTICE ("check trainer version %" PRIu64 " : localversion is %" PRIu64
-                 , remote_version, _local_version);
-  */
-  if (remote_version >= _local_version) { //TODO change this to >
-    //TODO sync remote version to local
-    if (_datas.find(_local_version) != _datas.end())
-      return 0;
+  if (remote_version >= _local_version) {
+    SM_LOG_NOTICE ("check trainer version %" PRIu64 " : localversion is %" PRIu64
+                   , remote_version, _local_version);
+    SimServerData *data;
+    if (_datas.find(remote_version) != _datas.end()) {
+      data = _datas[remote_version];
+    } else {
+      data = new SimServerData(remote_version);    
+      if (0 != data->load (_basepath)){
+        delete data;
+        return -1;
+      }
+      _datas[remote_version] = data;
+    }
 
-
-    SimServerData *data = new SimServerData(remote_version);
-    if (0 != data->load (_basepath)){
-      delete data;
+    if (0 != _server->updateServerData(data) ){
+      SM_LOG_WARNING ("update server data error!, can't bind new port?");
       return -1;
     }
-    
-    _datas[remote_version] = data;
-    for (std::vector <SimServer *>::iterator iter = _servers.begin();
-         iter != _servers.end();
-         iter++)
-      {
-        (*iter)->updateServerData(data);
-      }
-    return remote_version+1;
+    _local_version = remote_version;
   }
 
   return 0;
+
 }
 
 
 int
 SimServerDataManager::registerSimServer(SimServer *server) {
-  _servers.push_back (server);
+  _server = server;
   return 0;
 }
 
 
 SimServerData::SimServerData(uint64_t version):
+<<<<<<< HEAD
+  _version (version), _corpus(NULL), _dict(NULL), _model(NULL), _sim(NULL)
+=======
   _version (version), _corpus(NULL), _dict(NULL) ,_model(NULL), _sim(NULL)
+>>>>>>> 054a847b50093c245892394c15f125b7fc9f796e
 {
 
 }
@@ -364,12 +372,20 @@ SimServerEvent::_get_request(const string &request,
     return -1;
   }
   
-  if (!value["docid"].isNumeric()) {
+  if (value["docid"].isNumeric()) {
+    *docid = value["docid"].asUInt64();
+  } else if (value["docid"].isString()) {
+    int ret = sscanf (value["docid"].asString().c_str(), "%" PRIu64, docid); //support php string type
+    if (ret != 1) {
+      (*err) = ERROR_JSON_DOCID;
+      return -1;
+    }
+  } else {
     (*err) = ERROR_JSON_DOCID;
     return -1;
   }
 
-  *docid = value["docid"].asUInt64();
+
 
   if (value.isMember ("filter")) {
     if (value["filter"].isMember("threshold")) {

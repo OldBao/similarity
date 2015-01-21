@@ -90,7 +90,7 @@ namespace sm {
     std::string _basepath;
     uint64_t _local_version;
     std::map<uint64_t, SimServerData *> _datas;
-    std::vector<SimServer *> _servers;
+    SimServer * _server;
   };
 
 };
