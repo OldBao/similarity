@@ -1,0 +1,16 @@
+package smpb;
+
+
+message SimUnit {
+    required int32 id = 1;
+    required double sim = 2;
+};
+
+message Sim {
+    repeated SimUnit units = 1;
+};
+
+message Similarity {
+    required uint64 version = 1;
+    repeated Sim sims = 2;
+};
