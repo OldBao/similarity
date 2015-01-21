@@ -22,7 +22,7 @@ namespace sm {
     ~TrainData();
 
     virtual int doJob(const bool &);
-    int addUrlFromIStream(istream &is);
+    int addUrlFromIStream(std::istream &is);
     int train();
     int uploadToHdfs();
 
