@@ -1,0 +1,31 @@
+struct global_t {
+    string model_path = length(64);
+    string log_conf = length(64);
+    string mola_conf = length(64);
+    string trainer_server_conf = length(64);
+};
+
+global_t global;
+
+struct lda_t {
+    int32_t ntopics = range(50, 150);
+    float init_alpha = range(0, 5);
+    int32_t estimate_alpha = enum(0, 1);
+    int32_t var_max_iter = range(20, 200);
+    float var_converged = range(0,1);
+    int32_t em_max_iter = range(50, 300);
+    float em_converged = range(0, 1);
+    int32_t max_alpha_iter = range(500, 1500);
+    float newton_threshold = range(0, 1);
+    int32_t nworker = range(1,12);
+};
+
+lda_t lda;
+
+
+struct sim_t {
+    int32_t maxSim = range(30, 200);
+    int32_t nworker = range(1, 12);
+};
+
+sim_t sim;
