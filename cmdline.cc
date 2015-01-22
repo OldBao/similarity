@@ -1,4 +1,7 @@
 #include <sstream>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
 #include "cmdline.h"
 
 using namespace std;
