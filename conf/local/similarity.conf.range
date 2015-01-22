@@ -3,6 +3,7 @@ struct global_t {
     string log_conf = length(64);
     string mola_conf = length(64);
     string sim_server_conf = length(64);
+    string redis_conf;
 };
 
 global_t global;

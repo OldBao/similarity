@@ -4,7 +4,12 @@
 #include "log.h"
 #include "mola_wrapper.h"
 #include "kvproxy_client.h"
+#include "redis_wrapper.h"
+#include "configurable.h"
+#include "interface/similarity.pb.h"
 
+
+using namespace baidu::mco;
 using namespace sm;
 using namespace std;
 
@@ -28,7 +33,9 @@ typedef ub::SmartEvent<SimServerEvent> SimServerEventPtr;
 SimServer::SimServer(ub::NetReactor *reactor):
   ub::UbAServer (reactor), _server_data(NULL)
 {
-  
+  SM_CONFIG_BEGIN(cache)
+  SM_CONFIG_PROP(cache_expire, int32, 60); //default one day expire
+  SM_CONFIG_END
 }
 
 SimServer::~SimServer(){
@@ -56,9 +63,14 @@ SimServer::updateServerData(SimServerData *data) {
 int
 SimServer::getSimilarities (sim_t *sims, uint64_t docid, float threshold, int max_result) {
   int ret;
+  if (0 == seek_from_cache(sims, docid, threshold, max_result)) {
+    return 0;
+  }
   _dataLock.AcquireRead();
   ret = _server_data->getSimilarity (sims, docid, threshold, max_result);
   _dataLock.Release();
+  if (sims->size() != 0)
+    save_to_cache(*sims, docid);
   return ret;
 }
 
@@ -374,7 +386,6 @@ SimServerEvent::_get_request(const string &request,
   }
 
 
-
   if (value.isMember ("filter")) {
     if (value["filter"].isMember("threshold")) {
       if (!value["filter"]["threshold"].isNumeric()) {
@@ -395,7 +406,7 @@ SimServerEvent::_get_request(const string &request,
     }
   }
 
-  SM_LOG_NOTICE ("[docid:%" PRIu64 " threshold: %lf max_result:%d",
+  SM_LOG_NOTICE ("[REQUEST] [docid:%" PRIu64 "] threshold: %lf max_result:%d",
                  *docid, *threshold, *max_result);
   return 0;
 }
@@ -424,4 +435,96 @@ SimServerEvent::_sims_to_json(const sim_t &sims, string *strret) {
    Json::FastWriter writer;
    *strret = writer.write(ret);
 }
+
+static void
+_gen_sim_key(uint64_t docid, std::string *keybuf) {
+  SM_ASSERT (keybuf && keybuf->size() == 0, "key buf should be empty");
+  char mybuf[128];
+  int ret = snprintf (mybuf, 128, "__SIMILARITY__%" PRIu64, docid);
+  keybuf->assign(mybuf, ret);
+}
+
+
+int
+SimServer::seek_from_cache(sim_t *sims, uint64_t docid, float threshold, int max_result){
+  SM_ASSERT(sims && sims->size() == 0, "get a wrong para");
+  RedisEngine& engine = RedisEngineManager::getInstance()->getEngine();
+
+  string mykey;
+  _gen_sim_key(docid, &mykey);
+  Slice key(mykey);
+  Slice value;
+  
+  if (engine.get(key, value) != 0) {
+    SM_LOG_WARNING ("get key %" PRIu64 " from redis error", docid);
+    return -1;
+  }
+  if (value.size() == 0) {
+    return -1;
+  }
+
+  SM_LOG_DEBUG ("[LOAD_CACHE] key : %s value size : %zu", key.data(), value.size());
+
+  smpb::Sim dsim;
+  string ss(value.data(), value.size());
+  if (!dsim.ParseFromString(ss)) {
+    SM_LOG_WARNING("get key %" PRIu64 "but invalid format", docid);
+    return -1;
+  }
+
+  
+  for (int i = 0; i < dsim.units_size(); i++) {
+    if (i >= max_result) break;
+
+    if (dsim.units(i).sim() < threshold) {
+      break;
+    }
+    
+    sim_unit_t u;
+    u.docid = dsim.units(i).id();
+    u.sim = dsim.units(i).sim();
+    sims->push_back(u);
+  }
+
+  return 0;
+}
+
+
+int
+SimServer::save_to_cache(const sim_t& sim ,uint64_t docid) {
+  smpb::Sim ssim;
+  string mykey;
+  _gen_sim_key(docid, &mykey);
+  RedisEngine &engine = RedisEngineManager::getInstance()->getEngine();
+  Slice key(mykey);
+
+  for (size_t i = 0; i < sim.size(); i++) {
+    smpb::SimUnit *sunit = ssim.add_units();
+    sunit->set_id(sim[i].docid);
+    sunit->set_sim(sim[i].sim);
+  }
+
+  string buffer;
+  if (!ssim.SerializeToString(&buffer)) {
+    SM_LOG_WARNING ("serialize to buffer error");
+    return -1;
+  }
+
+  SM_LOG_DEBUG ("[SAVE_CHCHE] key : %s value size : %zu", key.data(), buffer.size());
+
+  Slice value(buffer);
+  if (engine.set(key, value) != 0) {
+    SM_LOG_WARNING ("set to redis error");
+    return -1;
+  }
+
+  if (engine.expire(key, _cache_expire) != 0) {
+    SM_LOG_WARNING ("expire redis key error");
+    return -1;
+  }
+
+  return 0;
+}
+
+
 #undef DEF_ERROR

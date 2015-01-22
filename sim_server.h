@@ -72,8 +72,11 @@ namespace sm {
     int getDefaultMaxResult() {return 20; }
     float getDefaultThreshold() {return 0.0; }
   private:
+    int seek_from_cache(sim_t* sim, uint64_t docid, float threshold, int max_result);
+    int save_to_cache(const sim_t& sim, uint64_t docid);
     SimServerData *_server_data;
     RWLock _dataLock;
+    int _cache_expire;
   };
 
   class SimServerDataManager {

@@ -4,12 +4,12 @@ ifeq ($(shell uname -m),x86_64)
 CC=gcc
 CXX=g++
 CXXFLAGS=-g \
-  -O2 \
+  -O0 \
   -pipe \
   -W \
   -Wall \
   -fPIC \
-  -DNDEBUG
+  -DDEBUG
 CFLAGS=
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
@@ -250,7 +250,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=cd47cfc07fe7f2de9ec02ca6d6924905  COMAKE
+COMAKE_MD5=7695182fd636308ddac6cff3eaf60f11  COMAKE
 
 
 .PHONY:all
@@ -289,6 +289,7 @@ clean:ccpclean
 	rm -rf ./output/include/mola_wrapper.h
 	rm -rf ./output/include/configurable.h
 	rm -rf ./output/include/cmdline.h
+	rm -rf ./output/include/redis_wrapper.h
 	rm -rf trainer_server
 	rm -rf ./output/bin/trainer_server
 	rm -rf sim_server
@@ -314,6 +315,7 @@ clean:ccpclean
 	rm -rf similarity_mola_wrapper.o
 	rm -rf similarity_configurable.o
 	rm -rf similarity_cmdline.o
+	rm -rf similarity_redis_wrapper.o
 	rm -rf interface/dict.pb.cc
 	rm -rf interface/dict.pb.h
 	rm -rf interface/similarity_dict.pb.o
@@ -372,6 +374,7 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_mola_wrapper.o \
   similarity_configurable.o \
   similarity_cmdline.o \
+  similarity_redis_wrapper.o \
   interface/similarity_dict.pb.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
@@ -390,7 +393,8 @@ libsimilarity.a:similarity_dictionary.o \
   sim_server.h \
   mola_wrapper.h \
   configurable.h \
-  cmdline.h
+  cmdline.h \
+  redis_wrapper.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlibsimilarity.a[0m']"
 	ar crs libsimilarity.a similarity_dictionary.o \
   similarity_segment.o \
@@ -410,6 +414,7 @@ libsimilarity.a:similarity_dictionary.o \
   similarity_mola_wrapper.o \
   similarity_configurable.o \
   similarity_cmdline.o \
+  similarity_redis_wrapper.o \
   interface/similarity_dict.pb.o \
   interface/similarity_corpus.pb.o \
   interface/similarity_bow.pb.o \
@@ -419,7 +424,7 @@ libsimilarity.a:similarity_dictionary.o \
 	mkdir -p ./output/lib
 	cp -f --link libsimilarity.a ./output/lib
 	mkdir -p ./output/include
-	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h configurable.h cmdline.h ./output/include
+	cp -f --link dictionary.h document.h token.h segment.h encoding.h corpus.h model.h concurrent.h kvproxy_client.h sim_server.h mola_wrapper.h configurable.h cmdline.h redis_wrapper.h ./output/include
 
 trainer_server:trainer_server_trainer_server_main.o \
   -lsimilarity
@@ -1071,6 +1076,15 @@ similarity_cmdline.o:cmdline.cc \
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_cmdline.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_cmdline.o cmdline.cc
 
+similarity_redis_wrapper.o:redis_wrapper.cc \
+  redis_wrapper.h \
+  singleton.h \
+  concurrent.h \
+  concurrent.hpp \
+  log.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msimilarity_redis_wrapper.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o similarity_redis_wrapper.o redis_wrapper.cc
+
 interface/dict.pb.cc \
   interface/dict.pb.h:interface/dict.proto
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40minterface/dict.pb.cc \
@@ -1202,7 +1216,9 @@ sim_server_sim_server.o:sim_server.cc \
   test/test_main.h \
   similarity.h \
   mola_wrapper.h \
-  kvproxy_client.h
+  kvproxy_client.h \
+  redis_wrapper.h \
+  interface/similarity.pb.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msim_server_sim_server.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o sim_server_sim_server.o sim_server.cc
 
@@ -1246,7 +1262,8 @@ offline_trainer_offline_trainer.o:offline_trainer.cc \
   test/test_main.h \
   similarity.h \
   configurable.h \
-  mola_wrapper.h
+  mola_wrapper.h \
+  redis_wrapper.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40moffline_trainer_offline_trainer.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o offline_trainer_offline_trainer.o offline_trainer.cc
 

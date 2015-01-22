@@ -9,6 +9,7 @@
 #include "cfgflag.h"
 #include "ub.h"
 #include "mola_wrapper.h"
+#include "redis_wrapper.h"
 
 using namespace std;
 using namespace sm;

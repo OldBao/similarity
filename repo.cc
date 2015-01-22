@@ -32,6 +32,8 @@ Repository::Repository()
   SM_CONFIG_PROP_STR(corpus_name, "similarity");
   SM_CONFIG_PROP_STR(dict_name, "similarity");
   SM_CONFIG_PROP(nworker, int32, 12);
+  SM_CONFIG_PROP(nfeatures, int32, -1);
+  SM_CONFIG_PROP(do_tfidf, int32, 0);
   SM_CONFIG_END
 
   for (int i = 0; i < _nworker; i++) {
@@ -131,6 +133,7 @@ Repository::doJob(const string &raw) {
   }
 
   _dict.doc2bow (&bow, doc, true);
+
   bow.pre_handle();
   if (bow.size() == 0) {
     SM_LOG_DEBUG ("didn't get any words in %lu", doc.getId());
@@ -202,7 +205,18 @@ Repository::save() {
     return -1;
   }
   
-  ret = _corpus.save(_corpus_name);
+  if (_nfeatures > 0) {
+    _corpus.truncate(_nfeatures);
+  }
+  SM_LOG_NOTICE ("truncate corpus features to %zu", _nfeatures);
+
+  if (_do_tfidf != 1) {
+    SM_LOG_NOTICE ("do tfidf to corpus, i will save tfidf only");
+    tfidf();
+    ret = _tfidf.save(_corpus_name);
+  } else {
+    ret = _corpus.save(_corpus_name);    
+  }
   
   if (0 != ret) {
     SM_LOG_WARNING ("save corpus error");

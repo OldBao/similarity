@@ -55,6 +55,8 @@ namespace sm {
     std::string _cache_path;
     std::map<int, uint64_t> _docmap;
 
+    int _nfeatures;
+    int _do_tfidf;
     int _nworker;
     std::vector<RepositoryWorker *> _workers;
     Lock _docmapLock;

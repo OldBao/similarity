@@ -34,17 +34,18 @@
 #define SM_LOG_NOTICE(fmt, arg...) ul_writelog (UL_LOG_NOTICE, fmt, ##arg)
 #define SM_LOG_DEBUG(fmt, arg...) ul_writelog (UL_LOG_DEBUG, fmt, ##arg)
 #define SM_LOG_TRACE(fmt, arg...) ul_writelog (UL_LOG_TRACE, fmt, ##arg)
-#define __SM_CHECK(cond, fmt, arg...) {           \
-    SM_LOG_WARNING ("assert (" #cond ") fails : " fmt "\n", ##arg); \
+#define __SM_CHECK(cond, fmt, arg...) {                                 \
+    if (!(cond)) {                                                      \
+      ul_writelog (UL_LOG_WARNING, "assert [" #cond "] fails : " fmt "\n", ##arg); \
+    }                                                                   \
   }
 
 #define SM_CHECK_RET(ret, cond, fmt, arg...)  {                 \
     if (!(cond)) {                                              \
-      SM_LOG_WARNING ("assert [" #cond "] fails : " fmt "\n", ##arg);   \
+      ul_writelog (UL_LOG_WARNING, "assert [" #cond "] fails : " fmt "\n", ##arg); \
       return ret;                                               \
     }                                                           \
   }
-
 
 #endif
 

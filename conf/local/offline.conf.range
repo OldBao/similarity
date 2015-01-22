@@ -24,7 +24,13 @@ lda_t lda;
 
 struct sim_t {
     int32_t maxSim = range(30, 200);
-    int32_t nworker = range(1, 12);
+ int32_t nworker = range(1, 12);
 };
 
 sim_t sim;
+
+struct corpus_t {
+    int32_t nfeatures = range(-1, 30);
+    string model_name;
+    int32_t do_tfidf = enum(0, 1);
+};

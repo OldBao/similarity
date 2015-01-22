@@ -5,18 +5,20 @@
 #include "ub.h"
 #include "configurable.h"
 #include "mola_wrapper.h"
+#include "redis_wrapper.h"
 #include "segment.h"
 #include "cmdline.h"
 #include "sim_server.h"
+#include "configurable.h"
+
 using namespace sm;
 
 #define MYNAME "sim_server"
-static Cmdline *cmdline;
-
+Cmdline cmdline(MYNAME);
 
 void
 show_version(){
-  cout << cmdline->getDesc() << endl;
+  cout << cmdline.getDesc() << endl;
 }
 
 
@@ -37,8 +39,8 @@ main(int argc, char **argv) {
     cout << comcfg::DEFHELP << endl;
     return -1;
   }
+  cmdline.change_proc_name(argc, argv);
 
-  cmdline = new Cmdline(argc, argv, MYNAME);
   ret = Configurable::getInstance()->load (flags.cfpath(), flags.cffile(), flags.cfrange());
   if ( ret != 0 ) {
     if ( ret == comcfg::CONFIG_ERROR ) {
@@ -59,6 +61,12 @@ main(int argc, char **argv) {
 
   if (0 != MolaEngineManager::getInstance()->init(flags.cfpath(), conf["global"]["mola_conf"].to_cstr())){
     cout << "init mola error" << endl;
+    return -1;
+  }
+
+
+  if (0 != RedisEngineManager::getInstance()->init(flags.cfpath(), conf["global"]["redis_conf"].to_cstr())) {
+    cout << "init redis error" << endl;
     return -1;
   }
 

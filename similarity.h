@@ -42,6 +42,7 @@ namespace sm {
     //virtual int save(const std::string &path, const std::string &basename) = 0;
     //virtual int load(const std::string &path, const std::string &basename) = 0;
     virtual void waitAllJobDone() = 0;
+
   protected:
     Similarity(Similarity &) {}
     Similarity() {}

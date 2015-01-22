@@ -17,8 +17,10 @@ namespace sm {
 #endif
   class Cmdline {
   public:
-    Cmdline (int argc, char **argv, const std::string &procname);
+    Cmdline (const std::string &procname);
     ~Cmdline();
+    
+    void change_proc_name(int argc, char **argv);
     const std::string& getVersion() {return _version;}
     const std::string& getDesc() {return _desc;}
   private:

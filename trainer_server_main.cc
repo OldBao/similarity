@@ -12,11 +12,11 @@ using namespace std;
 using namespace sm;
 
 #define MYNAME "trainer"
-static Cmdline *cmdline;
+static Cmdline cmdline(MYNAME);
 
 void
 show_version(){
-  cout << cmdline->getDesc() << endl;
+  cout << cmdline.getDesc() << endl;
 }
 
 
@@ -24,7 +24,6 @@ int
 main(int argc, char **argv) {
   int ret;
   signal (SIGPIPE, SIG_IGN);
-
   comcfg::Flag flags(show_version);
 
   if ( 0 != flags.init(argc, argv)){
@@ -32,7 +31,7 @@ main(int argc, char **argv) {
     return -1;
   }
 
-  cmdline = new Cmdline(argc, argv, MYNAME);
+  cmdline.change_proc_name(argc, argv);
   ret = Configurable::getInstance()->load (flags.cfpath(), flags.cffile(), flags.cfrange());
   if ( ret != 0 ) {
     if ( ret == comcfg::CONFIG_ERROR ) {
